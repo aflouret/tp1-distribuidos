@@ -1,0 +1,23 @@
+services:
+  server:
+    container_name: server
+    build:
+      context: ./server
+    entrypoint: /server
+    restart: on-failure
+
+  client:
+    container_name: client
+    build:
+      context: ./client
+    entrypoint: /client
+    restart: on-failure
+    depends_on:
+      - server
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data
+      - type: bind
+        source: ./client/config.yaml
+        target: /config.yaml

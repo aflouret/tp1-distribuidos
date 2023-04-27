@@ -1,0 +1,4 @@
+server:
+  address: "localhost:12345"
+log:
+  level: "info"
