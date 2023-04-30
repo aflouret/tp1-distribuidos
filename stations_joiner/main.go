@@ -56,10 +56,6 @@ func (j *StationsJoiner) Run() {
 
 func (j *StationsJoiner) processStationMessage(msg string) {
 	if msg == "eof" {
-		if !j.endMessageReceived {
-			j.endMessageReceived = true
-			//j.producer.Produce(msg)
-		}
 		return
 	}
 

@@ -27,11 +27,12 @@ func main() {
 }
 
 func NewWeatherJoiner() *WeatherJoiner {
+	producer := middleware.NewProducer("precipitation_filter")
 	weatherConsumer := middleware.NewConsumer("weather", "")
 	tripsConsumer := middleware.NewConsumer("weather_joiner_trips", "")
-	//producer := middleware.NewProducer("weather_joiner_trips")
 	precipitationsByDateByCity := make(map[string]map[string]string)
 	return &WeatherJoiner{
+		producer:                   producer,
 		tripsConsumer:              tripsConsumer,
 		weatherConsumer:            weatherConsumer,
 		precipitationsByDateByCity: precipitationsByDateByCity,
@@ -39,7 +40,7 @@ func NewWeatherJoiner() *WeatherJoiner {
 }
 
 func (j *WeatherJoiner) Run() {
-	//defer j.producer.Close()
+	defer j.producer.Close()
 
 	j.weatherConsumer.Consume(j.processWeatherMessage)
 	j.weatherConsumer.Close()
@@ -49,10 +50,6 @@ func (j *WeatherJoiner) Run() {
 
 func (j *WeatherJoiner) processWeatherMessage(msg string) {
 	if msg == "eof" {
-		if !j.endMessageReceived {
-			j.endMessageReceived = true
-			//j.producer.Produce(msg)
-		}
 		return
 	}
 
@@ -73,12 +70,16 @@ func (j *WeatherJoiner) processTripMessage(msg string) {
 	if msg == "eof" {
 		if !j.endMessageReceived {
 			j.endMessageReceived = true
-			//j.producer.Produce(msg)
+			j.producer.Produce(msg)
 		}
 		return
 	}
-	joinedTrip, _ := j.joinWeather(msg)
-	log.Printf("joined trip: %s\n", joinedTrip)
+	joinedTrip, err := j.joinWeather(msg)
+	if err != nil {
+		fmt.Println("ERROR " + err.Error())
+	} else {
+		j.producer.Produce(joinedTrip)
+	}
 }
 
 func (j *WeatherJoiner) joinWeather(csvTrip string) (string, error) {

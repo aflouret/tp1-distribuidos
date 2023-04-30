@@ -12,16 +12,19 @@ type Server struct {
 	tripsProducer    *middleware.Producer
 	stationsProducer *middleware.Producer
 	weatherProducer  *middleware.Producer
+	resultsConsumer  *middleware.Consumer
 }
 
 func NewServer() *Server {
 	tripsProducer := middleware.NewProducer("data_dropper")
 	stationsProducer := middleware.NewProducer("stations")
 	weatherProducer := middleware.NewProducer("weather")
+	resultsConsumer := middleware.NewConsumer("results", "")
 	return &Server{
 		tripsProducer:    tripsProducer,
 		stationsProducer: stationsProducer,
 		weatherProducer:  weatherProducer,
+		resultsConsumer:  resultsConsumer,
 	}
 }
 
@@ -170,9 +173,10 @@ func (s *Server) handleEndStaticData(conn net.Conn) {
 }
 
 func (s *Server) handleResults(conn net.Conn) {
-	s.tripsProducer.Produce("eof")
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
-	protocol.Send(conn, protocol.NewDataMessage("OK"))
-	protocol.Send(conn, protocol.NewDataMessage("OK"))
-	protocol.Send(conn, protocol.NewDataMessage("OK"))
+	s.tripsProducer.Produce("eof")
+	s.resultsConsumer.Consume(func(msg string) {
+		protocol.Send(conn, protocol.NewDataMessage(msg))
+	})
+
 }

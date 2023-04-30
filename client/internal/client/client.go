@@ -257,17 +257,17 @@ func (c *Client) getResults() error {
 	}
 	fmt.Println(result1)
 
-	result2, err := c.getResult()
-	if err != nil {
-		return err
-	}
-	fmt.Println(result2)
-
-	result3, err := c.getResult()
-	if err != nil {
-		return err
-	}
-	fmt.Println(result3)
+	//result2, err := c.getResult()
+	//if err != nil {
+	//	return err
+	//}
+	//fmt.Println(result2)
+	//
+	//result3, err := c.getResult()
+	//if err != nil {
+	//	return err
+	//}
+	//fmt.Println(result3)
 	return nil
 }
 
