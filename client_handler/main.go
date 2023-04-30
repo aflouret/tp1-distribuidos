@@ -9,10 +9,20 @@ import (
 )
 
 type Server struct {
+	tripsProducer    *middleware.Producer
+	stationsProducer *middleware.Producer
+	weatherProducer  *middleware.Producer
 }
 
 func NewServer() *Server {
-	return &Server{}
+	tripsProducer := middleware.NewProducer("data_dropper")
+	stationsProducer := middleware.NewProducer("stations")
+	weatherProducer := middleware.NewProducer("weather")
+	return &Server{
+		tripsProducer:    tripsProducer,
+		stationsProducer: stationsProducer,
+		weatherProducer:  weatherProducer,
+	}
 }
 
 func main() {
@@ -28,9 +38,6 @@ func (s *Server) Run() {
 	defer listener.Close()
 
 	fmt.Println("Server listening on port 12345")
-
-	producer := middleware.NewProducer("data_dropper")
-	defer producer.Close()
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -38,11 +45,12 @@ func (s *Server) Run() {
 			continue
 		}
 		fmt.Printf("New connection from: %v\n", conn.RemoteAddr())
-		s.handleConnection(conn, producer)
+		s.handleConnection(conn)
 	}
+	s.tripsProducer.Close()
 }
 
-func (s *Server) handleConnection(conn net.Conn, producer *middleware.Producer) {
+func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	msg, err := protocol.Recv(conn)
@@ -55,10 +63,10 @@ func (s *Server) handleConnection(conn net.Conn, producer *middleware.Producer) 
 		s.handleStations(conn, msg.Payload)
 	case protocol.BeginWeather:
 		s.handleWeather(conn, msg.Payload)
-	//case protocol.EndStaticData:
-	//	s.handleEndStaticData(conn)
+	case protocol.EndStaticData:
+		s.handleEndStaticData(conn)
 	case protocol.BeginTrips:
-		s.handleTrips(conn, producer, msg.Payload)
+		s.handleTrips(conn, msg.Payload)
 	case protocol.GetResults:
 		s.handleResults(conn)
 	}
@@ -88,6 +96,9 @@ func (s *Server) handleStations(conn net.Conn, city string) {
 			protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 			return
 		}
+
+		station := city + "," + strings.TrimSpace(msg.Payload)
+		s.stationsProducer.Produce(station)
 	}
 }
 
@@ -115,10 +126,13 @@ func (s *Server) handleWeather(conn net.Conn, city string) {
 			protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 			return
 		}
+
+		weather := city + "," + strings.TrimSpace(msg.Payload)
+		s.weatherProducer.Produce(weather)
 	}
 }
 
-func (s *Server) handleTrips(conn net.Conn, producer *middleware.Producer, city string) {
+func (s *Server) handleTrips(conn net.Conn, city string) {
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 
 	_, err := protocol.Recv(conn)
@@ -145,11 +159,18 @@ func (s *Server) handleTrips(conn net.Conn, producer *middleware.Producer, city 
 
 		trip := city + "," + strings.TrimSpace(msg.Payload)
 
-		producer.Produce(trip)
+		s.tripsProducer.Produce(trip)
 	}
 }
 
+func (s *Server) handleEndStaticData(conn net.Conn) {
+	s.stationsProducer.Produce("eof")
+	s.weatherProducer.Produce("eof")
+	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
+}
+
 func (s *Server) handleResults(conn net.Conn) {
+	s.tripsProducer.Produce("eof")
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 	protocol.Send(conn, protocol.NewDataMessage("OK"))
 	protocol.Send(conn, protocol.NewDataMessage("OK"))

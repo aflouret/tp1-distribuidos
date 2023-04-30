@@ -7,32 +7,33 @@ import (
 )
 
 type Producer struct {
-	conn  *amqp.Connection
-	ch    *amqp.Channel
-	queue amqp.Queue
+	conn         *amqp.Connection
+	ch           *amqp.Channel
+	exchangeName string
 }
 
-func NewProducer(queueName string) *Producer {
+func NewProducer(exchangeName string) *Producer {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 
 	ch, err := conn.Channel()
 	failOnError(err, "Failed to open a channel")
 
-	q, err := ch.QueueDeclare(
-		queueName,
-		true,
-		false,
-		false,
-		false,
-		nil,
+	err = ch.ExchangeDeclare(
+		exchangeName, // name
+		"topic",      // type
+		true,         // durable
+		false,        // auto-deleted
+		false,        // internal
+		false,        // no-wait
+		nil,          // arguments
 	)
-	failOnError(err, "Failed to declare a queue")
+	failOnError(err, "Failed to declare an exchange")
 
 	return &Producer{
-		conn:  conn,
-		ch:    ch,
-		queue: q,
+		conn:         conn,
+		ch:           ch,
+		exchangeName: exchangeName,
 	}
 }
 
@@ -40,8 +41,8 @@ func (p *Producer) Produce(msg string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	err := p.ch.PublishWithContext(ctx,
+		p.exchangeName,
 		"",
-		p.queue.Name,
 		false,
 		false,
 		amqp.Publishing{

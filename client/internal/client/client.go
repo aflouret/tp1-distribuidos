@@ -182,6 +182,16 @@ func (c *Client) sendTripsToServer() error {
 	sigtermNotifier := make(chan os.Signal, 1)
 	signal.Notify(sigtermNotifier, syscall.SIGTERM)
 
+	if err := c.connectToServer(); err != nil {
+		return err
+	}
+	if err := c.notifyEndStaticData(); err != nil {
+		return err
+	}
+	if err := c.conn.Close(); err != nil {
+		return err
+	}
+
 	for _, city := range cities {
 		file, err := os.Open(fmt.Sprintf("data/%s/trips-small.csv", city))
 		if err != nil {
@@ -283,6 +293,10 @@ func (c *Client) notifyBeginTrips(city string) error {
 
 func (c *Client) notifyEndTrips(city string) error {
 	return utils.SendControlMessage(c.conn, protocol.EndTrips, city)
+}
+
+func (c *Client) notifyEndStaticData() error {
+	return utils.SendControlMessage(c.conn, protocol.EndStaticData, "")
 }
 
 func (c *Client) sendResultsRequest() error {
