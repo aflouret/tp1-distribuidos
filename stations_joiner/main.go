@@ -21,7 +21,7 @@ type station struct {
 }
 
 type StationsJoiner struct {
-	producer           *middleware.Producer
+	yearFilterProducer *middleware.Producer
 	tripsConsumer      *middleware.Consumer
 	stationsConsumer   *middleware.Consumer
 	stations           map[string]station
@@ -36,17 +36,18 @@ func main() {
 func NewStationsJoiner() *StationsJoiner {
 	stationsConsumer := middleware.NewConsumer("stations", "")
 	tripsConsumer := middleware.NewConsumer("stations_joiner_trips", "")
-	//producer := middleware.NewProducer("stations_joiner_trips")
+	yearFilterProducer := middleware.NewProducer("year_filter")
 	stations := make(map[string]station)
 	return &StationsJoiner{
-		tripsConsumer:    tripsConsumer,
-		stationsConsumer: stationsConsumer,
-		stations:         stations,
+		tripsConsumer:      tripsConsumer,
+		stationsConsumer:   stationsConsumer,
+		yearFilterProducer: yearFilterProducer,
+		stations:           stations,
 	}
 }
 
 func (j *StationsJoiner) Run() {
-	//defer j.producer.Close()
+	//defer j.yearFilterProducer.Close()
 
 	j.stationsConsumer.Consume(j.processStationMessage)
 	j.stationsConsumer.Close()
@@ -77,11 +78,12 @@ func (j *StationsJoiner) processTripMessage(msg string) {
 	if msg == "eof" {
 		if !j.endMessageReceived {
 			j.endMessageReceived = true
-			//j.producer.Produce(msg)
+			j.yearFilterProducer.Produce(msg)
 		}
 		return
 	}
 	joinedTrip, _ := j.joinStation(msg)
+	j.sendToYearFilter(joinedTrip)
 	log.Printf("joined trip: %s\n", joinedTrip)
 }
 
@@ -121,4 +123,14 @@ func (j *StationsJoiner) joinStation(csvTrip string) (string, error) {
 	)
 
 	return joinedTrip, nil
+}
+
+func (j *StationsJoiner) sendToYearFilter(trip string) {
+	fields := strings.Split(trip, ",")
+
+	startStationName := fields[1]
+	year := fields[7]
+
+	tripToSend := fmt.Sprintf("%s,%s", startStationName, year)
+	j.yearFilterProducer.Produce(tripToSend)
 }
