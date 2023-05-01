@@ -1,99 +1,28 @@
 package main
 
 import (
-	"fmt"
+	"os"
 	"strconv"
-	"strings"
-	"time"
 	"tp1/common/middleware"
 )
 
-const (
-	idIndex = iota
-	startDateIndex
-	durationIndex
-)
-
-type average struct {
-	avg   float64
-	count int
-}
-
-type DurationAverager struct {
-	producer           *middleware.Producer
-	consumer           *middleware.Consumer
-	avgDurationsByDate map[string]average
-	endMessageReceived bool
-	msgCount           int
-	startTime          time.Time
-}
-
 func main() {
-	durationAverager := NewDurationAverager()
-	durationAverager.Run()
-}
-
-func NewDurationAverager() *DurationAverager {
-	consumer := middleware.NewConsumer("duration_averager", "")
-	producer := middleware.NewProducer("duration_merger")
-	avgDurationsByDate := make(map[string]average)
-
-	return &DurationAverager{
-		producer:           producer,
-		consumer:           consumer,
-		avgDurationsByDate: avgDurationsByDate,
+	instanceID := os.Getenv("ID")
+	if instanceID == "" {
+		instanceID = "0"
 	}
-}
 
-func (a *DurationAverager) Run() {
-	defer a.consumer.Close()
-	defer a.producer.Close()
-
-	a.startTime = time.Now()
-	a.consumer.Consume(a.processMessage)
-	a.sendResults()
-	for k, v := range a.avgDurationsByDate {
-		fmt.Printf("%s %v %v\n", k, v.avg, v.count)
-	}
-}
-
-func (a *DurationAverager) processMessage(msg string) {
-	if msg == "eof" {
-		if !a.endMessageReceived {
-			a.endMessageReceived = true
-		}
-		return
-	}
-	if a.msgCount%100 == 0 {
-		fmt.Printf("Time: %s Received message %s\n", time.Since(a.startTime).String(), msg)
-	}
-	a.msgCount++
-	a.updateAverage(msg)
-}
-
-func (a *DurationAverager) updateAverage(msg string) error {
-	fields := strings.Split(msg, ",")
-	startDate := fields[startDateIndex]
-	duration, err := strconv.ParseFloat(fields[durationIndex], 64)
+	previousStageInstances, err := strconv.Atoi(os.Getenv("PREV_STAGE_INSTANCES"))
 	if err != nil {
-		return err
+		previousStageInstances = 1
 	}
+	nextStageInstances, err := strconv.Atoi(os.Getenv("NEXT_STAGE_INSTANCES"))
+	if err != nil {
+		nextStageInstances = 1
+	}
+	consumer := middleware.NewConsumer("duration_averager", "", previousStageInstances, instanceID)
+	producer := middleware.NewProducer("duration_merger", nextStageInstances, false)
 
-	if d, ok := a.avgDurationsByDate[startDate]; ok {
-		newAvg := (d.avg*float64(d.count) + duration) / float64(d.count+1)
-		d.avg = newAvg
-		d.count++
-		a.avgDurationsByDate[startDate] = d
-	} else {
-		a.avgDurationsByDate[startDate] = average{avg: duration, count: 1}
-	}
-	return nil
-}
-
-func (a *DurationAverager) sendResults() {
-	for k, v := range a.avgDurationsByDate {
-		result := fmt.Sprintf("%s,%v,%v", k, v.avg, v.count)
-		a.producer.Produce(result)
-	}
-	a.producer.Produce("eof")
+	durationAverager := NewDurationAverager(consumer, producer)
+	durationAverager.Run()
 }

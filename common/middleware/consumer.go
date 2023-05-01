@@ -1,14 +1,17 @@
 package middleware
 
 import (
+	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
 )
 
 type Consumer struct {
-	conn       *amqp.Connection
-	ch         *amqp.Channel
-	msgChannel <-chan amqp.Delivery
+	conn          *amqp.Connection
+	ch            *amqp.Channel
+	msgChannel    <-chan amqp.Delivery
+	eofsReceived  int
+	producerCount int
 }
 
 func failOnError(err error, msg string) {
@@ -17,7 +20,7 @@ func failOnError(err error, msg string) {
 	}
 }
 
-func NewConsumer(exchangeName string, routingKey string) *Consumer {
+func NewConsumer(exchangeName string, routingKey string, producerCount int, consumerID string) *Consumer {
 	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 
@@ -26,7 +29,7 @@ func NewConsumer(exchangeName string, routingKey string) *Consumer {
 
 	err = ch.ExchangeDeclare(
 		exchangeName, // name
-		"topic",      // type
+		"direct",     // type
 		false,        // durable
 		false,        // auto-deleted
 		false,        // internal
@@ -46,19 +49,20 @@ func NewConsumer(exchangeName string, routingKey string) *Consumer {
 	failOnError(err, "Failed to declare a queue")
 
 	err = ch.QueueBind(
-		q.Name,       // queue name
-		routingKey,   // routing key
-		exchangeName, // exchange
+		q.Name,                // queue name
+		routingKey+consumerID, // routing key
+		exchangeName,          // exchange
 		false,
 		nil)
 	failOnError(err, "Failed to bind a queue")
 
-	//err = ch.Qos(
-	//	0,
-	//	0,
-	//	false,
-	//)
-	//failOnError(err, "Failed to set QoS")
+	err = ch.QueueBind(
+		q.Name,       // queue name
+		"eof",        // routing key
+		exchangeName, // exchange
+		false,
+		nil)
+	failOnError(err, "Failed to bind a queue")
 
 	msgs, err := ch.Consume(
 		q.Name,
@@ -72,20 +76,29 @@ func NewConsumer(exchangeName string, routingKey string) *Consumer {
 	failOnError(err, "Failed to register a consumer")
 
 	return &Consumer{
-		conn:       conn,
-		ch:         ch,
-		msgChannel: msgs,
+		conn:          conn,
+		ch:            ch,
+		msgChannel:    msgs,
+		eofsReceived:  0,
+		producerCount: producerCount,
 	}
 }
 
 func (c *Consumer) Consume(processMessage func(string)) {
 	for msg := range c.msgChannel {
 		msgBody := string(msg.Body)
-		processMessage(msgBody)
-		//msg.Ack(false)
 		if msgBody == "eof" {
-			return
+			fmt.Printf("Received eof %v\n", c.eofsReceived)
+			c.eofsReceived++
+			if c.eofsReceived == c.producerCount {
+				fmt.Println("Received all eofs")
+				processMessage(msgBody)
+				return
+			}
+			continue
 		}
+		processMessage(msgBody)
+
 	}
 }
 

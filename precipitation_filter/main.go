@@ -1,82 +1,28 @@
 package main
 
 import (
-	"fmt"
+	"os"
 	"strconv"
-	"strings"
-	"time"
 	"tp1/common/middleware"
 )
 
-const (
-	idIndex = iota
-	startDateIndex
-	durationIndex
-	precipitationsIndex
-)
-
-type PrecipitationFilter struct {
-	producer           *middleware.Producer
-	consumer           *middleware.Consumer
-	endMessageReceived bool
-	msgCount           int
-	startTime          time.Time
-}
-
 func main() {
-	precipitationFilter := NewPrecipitationFilter()
-	precipitationFilter.Run()
-}
-
-func NewPrecipitationFilter() *PrecipitationFilter {
-	consumer := middleware.NewConsumer("precipitation_filter", "")
-	producer := middleware.NewProducer("duration_averager")
-
-	return &PrecipitationFilter{
-		producer: producer,
-		consumer: consumer,
+	instanceID := os.Getenv("ID")
+	if instanceID == "" {
+		instanceID = "0"
 	}
-}
 
-func (f *PrecipitationFilter) Run() {
-	defer f.consumer.Close()
-	defer f.producer.Close()
-	f.startTime = time.Now()
-
-	f.consumer.Consume(f.processMessage)
-}
-
-func (f *PrecipitationFilter) processMessage(msg string) {
-	if msg == "eof" {
-		if !f.endMessageReceived {
-			f.endMessageReceived = true
-			f.producer.Produce(msg)
-		}
-		return
-	}
-	//fmt.Println("Received message " + msg)
-
-	if f.msgCount%10000 == 0 {
-		fmt.Printf("Time: %s Received message %s\n", time.Since(f.startTime).String(), msg)
-	}
-	f.msgCount++
-	f.filterAndSend(msg)
-}
-
-func (f *PrecipitationFilter) filterAndSend(msg string) error {
-	fields := strings.Split(msg, ",")
-	precipitationsString := fields[precipitationsIndex]
-	precipitations, err := strconv.ParseFloat(precipitationsString, 64)
+	previousStageInstances, err := strconv.Atoi(os.Getenv("PREV_STAGE_INSTANCES"))
 	if err != nil {
-		return err
+		previousStageInstances = 1
 	}
-	if precipitations > 30 {
-		id := fields[idIndex]
-		startDate := fields[startDateIndex]
-		duration := fields[durationIndex]
-		msgToSend := fmt.Sprintf("%s,%s,%s", id, startDate, duration)
-		f.producer.Produce(msgToSend)
-		//fmt.Printf("Sent message %s\n", msgToSend)
+	nextStageInstances, err := strconv.Atoi(os.Getenv("NEXT_STAGE_INSTANCES"))
+	if err != nil {
+		nextStageInstances = 1
 	}
-	return nil
+	consumer := middleware.NewConsumer("precipitation_filter", "", previousStageInstances, instanceID)
+	producer := middleware.NewProducer("duration_averager", nextStageInstances, true)
+
+	precipitationFilter := NewPrecipitationFilter(consumer, producer)
+	precipitationFilter.Run()
 }

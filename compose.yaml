@@ -14,6 +14,8 @@ services:
 
   client_handler:
     container_name: client_handler
+    environment:
+      - NEXT_STAGE_INSTANCES=2
     build:
       context: .
       dockerfile: ./client_handler/Dockerfile
@@ -42,6 +44,9 @@ services:
 
   duration_merger:
     container_name: duration_merger
+    environment:
+      - PREV_STAGE_INSTANCES=2
+      - NEXT_STAGE_INSTANCES=1
     build:
       context: .
       dockerfile: ./duration_merger/Dockerfile
@@ -51,8 +56,13 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  duration_averager:
-    container_name: duration_averager
+
+  duration_averager_0:
+    container_name: duration_averager_0
+    environment:
+      - ID=0
+      - PREV_STAGE_INSTANCES=2
+      - NEXT_STAGE_INSTANCES=1
     build:
       context: .
       dockerfile: ./duration_averager/Dockerfile
@@ -62,8 +72,28 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  precipitation_filter:
-    container_name: precipitation_filter
+  duration_averager_1:
+    container_name: duration_averager_1
+    environment:
+      - ID=1
+      - PREV_STAGE_INSTANCES=2
+      - NEXT_STAGE_INSTANCES=1
+    build:
+      context: .
+      dockerfile: ./duration_averager/Dockerfile
+    entrypoint: /duration_averager
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+        
+
+  precipitation_filter_0:
+    container_name: precipitation_filter_0
+    environment:
+      - ID=0
+      - PREV_STAGE_INSTANCES=3
+      - NEXT_STAGE_INSTANCES=2
     build:
       context: .
       dockerfile: ./precipitation_filter/Dockerfile
@@ -73,8 +103,28 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  weather_joiner:
-    container_name: weather_joiner
+  precipitation_filter_1:
+    container_name: precipitation_filter_1
+    environment:
+      - ID=1
+      - PREV_STAGE_INSTANCES=3
+      - NEXT_STAGE_INSTANCES=2
+    build:
+      context: .
+      dockerfile: ./precipitation_filter/Dockerfile
+    entrypoint: /precipitation_filter
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+   
+
+  weather_joiner_0:
+    container_name: weather_joiner_0
+    environment:
+      - ID=0
+      - PREV_STAGE_INSTANCES=2
+      - NEXT_STAGE_INSTANCES=2
     build:
       context: .
       dockerfile: ./weather_joiner/Dockerfile
@@ -84,8 +134,44 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  data_dropper:
-    container_name: data_dropper
+  weather_joiner_1:
+    container_name: weather_joiner_1
+    environment:
+      - ID=1
+      - PREV_STAGE_INSTANCES=2
+      - NEXT_STAGE_INSTANCES=2
+    build:
+      context: .
+      dockerfile: ./weather_joiner/Dockerfile
+    entrypoint: /weather_joiner
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  weather_joiner_2:
+    container_name: weather_joiner_2
+    environment:
+      - ID=2
+      - PREV_STAGE_INSTANCES=2
+      - NEXT_STAGE_INSTANCES=2
+    build:
+      context: .
+      dockerfile: ./weather_joiner/Dockerfile
+    entrypoint: /weather_joiner
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+   
+
+  data_dropper_0:
+    container_name: data_dropper_0
+    environment:
+      - ID=0
+      - PREV_STAGE_INSTANCES=1
+      - WEATHER_JOINER_INSTANCES=3
+      - STATIONS_JOINER_INSTANCES=1
     build:
       context: .
       dockerfile: ./data_dropper/Dockerfile
@@ -94,3 +180,20 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+
+  data_dropper_1:
+    container_name: data_dropper_1
+    environment:
+      - ID=1
+      - PREV_STAGE_INSTANCES=1
+      - WEATHER_JOINER_INSTANCES=3
+      - STATIONS_JOINER_INSTANCES=1
+    build:
+      context: .
+      dockerfile: ./data_dropper/Dockerfile
+    entrypoint: /data_dropper
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+   
