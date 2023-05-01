@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	startStationNameIndex = iota
+	idIndex = iota
+	startStationNameIndex
 )
 
 type TripCounter struct {

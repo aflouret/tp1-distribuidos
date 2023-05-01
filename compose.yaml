@@ -1,19 +1,37 @@
 services:
-  server:
-    container_name: server
+  rabbitmq:
+    container_name: rabbitmq
     build:
-      context: ./server
-    entrypoint: /server
+      context: ./rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:15672" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  client_handler:
+    container_name: client_handler
+    build:
+      context: .
+      dockerfile: ./client_handler/Dockerfile
+    entrypoint: /client_handler
     restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   client:
     container_name: client
     build:
-      context: ./client
+      context: .
+      dockerfile: ./client/Dockerfile
     entrypoint: /client
     restart: on-failure
     depends_on:
-      - server
+      - client_handler
     volumes:
       - type: bind
         source: ./data
@@ -21,3 +39,58 @@ services:
       - type: bind
         source: ./client/config.yaml
         target: /config.yaml
+
+  duration_merger:
+    container_name: duration_merger
+    build:
+      context: .
+      dockerfile: ./duration_merger/Dockerfile
+    entrypoint: /duration_merger
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  duration_averager:
+    container_name: duration_averager
+    build:
+      context: .
+      dockerfile: ./duration_averager/Dockerfile
+    entrypoint: /duration_averager
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  precipitation_filter:
+    container_name: precipitation_filter
+    build:
+      context: .
+      dockerfile: ./precipitation_filter/Dockerfile
+    entrypoint: /precipitation_filter
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  weather_joiner:
+    container_name: weather_joiner
+    build:
+      context: .
+      dockerfile: ./weather_joiner/Dockerfile
+    entrypoint: /weather_joiner
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  data_dropper:
+    container_name: data_dropper
+    build:
+      context: .
+      dockerfile: ./data_dropper/Dockerfile
+    entrypoint: /data_dropper
+    restart: on-failure
+    depends_on:
+      rabbitmq:
+        condition: service_healthy

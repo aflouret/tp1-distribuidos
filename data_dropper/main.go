@@ -1,29 +1,33 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
+	"fmt"
 	"strconv"
 	"strings"
+	"time"
 	"tp1/common/middleware"
 )
 
 const (
-	cityIndex             = 0
-	startDateIndex        = 1
-	startStationCodeIndex = 2
-	endStationCodeIndex   = 4
-	durationSecIndex      = 5
-	yearIdIndex           = 7
+	idIndex               = 0
+	cityIndex             = 1
+	startDateIndex        = 2
+	startStationCodeIndex = 3
+	endStationCodeIndex   = 5
+	durationSecIndex      = 6
+	yearIdIndex           = 8
 )
 
-var columnsForWeatherJoiner = []int{cityIndex, startDateIndex, durationSecIndex}
-var columnsForStationsJoiner = []int{cityIndex, startStationCodeIndex, endStationCodeIndex, yearIdIndex}
+var columnsForWeatherJoiner = []int{idIndex, cityIndex, startDateIndex, durationSecIndex}
+var columnsForStationsJoiner = []int{idIndex, cityIndex, startStationCodeIndex, endStationCodeIndex, yearIdIndex}
 
 type DataDropper struct {
 	stationsJoinerProducer *middleware.Producer
 	weatherJoinerProducer  *middleware.Producer
 	consumer               *middleware.Consumer
 	endMessageReceived     bool
+	msgCount               int
+	startTime              time.Time
 }
 
 func main() {
@@ -40,6 +44,7 @@ func NewDataDropper() *DataDropper {
 		stationsJoinerProducer: stationsJoinerProducer,
 		weatherJoinerProducer:  weatherJoinerProducer,
 		consumer:               consumer,
+		startTime:              time.Now(),
 	}
 }
 
@@ -64,6 +69,10 @@ func (d *DataDropper) processMessage(msg string) {
 	d.sanitize(fields)
 	d.sendToWeatherJoiner(fields)
 	d.sendToStationsJoiner(fields)
+	if d.msgCount%10000 == 0 {
+		fmt.Printf("Time: %s Received message %s\n", time.Since(d.startTime).String(), msg)
+	}
+	d.msgCount++
 }
 
 func (d *DataDropper) sanitize(fields []string) {
@@ -83,7 +92,7 @@ func (d *DataDropper) sendToWeatherJoiner(fields []string) {
 	}
 	trip := strings.Join(fieldsToSend, ",")
 	d.weatherJoinerProducer.Produce(trip)
-	log.Printf("Sent trip to weather joiner: %s\n", trip)
+	//log.Printf("Sent trip to weather joiner: %s\n", trip)
 }
 
 func (d *DataDropper) sendToStationsJoiner(fields []string) {
@@ -94,5 +103,5 @@ func (d *DataDropper) sendToStationsJoiner(fields []string) {
 	trip := strings.Join(fieldsToSend, ",")
 
 	d.stationsJoinerProducer.Produce(trip)
-	log.Printf("Sent trip to stations joiner: %s\n", trip)
+	//log.Printf("Sent trip to stations joiner: %s\n", trip)
 }

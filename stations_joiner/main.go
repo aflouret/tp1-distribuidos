@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	tripCityIndex = iota
+	idIndex = iota
+	tripCityIndex
 	tripStartStationCodeIndex
 	tripEndStationCodeIndex
 	tripYearIdIndex
@@ -95,6 +96,7 @@ func (j *StationsJoiner) joinStation(csvTrip string) (string, error) {
 
 	tripFields := strings.Split(csvTrip, ",")
 
+	id := tripFields[idIndex]
 	city := tripFields[tripCityIndex]
 	startStationCode := tripFields[tripStartStationCodeIndex]
 	endStationCode := tripFields[tripEndStationCodeIndex]
@@ -111,7 +113,8 @@ func (j *StationsJoiner) joinStation(csvTrip string) (string, error) {
 		return "", fmt.Errorf("station not found: %s", endStationKey)
 	}
 
-	joinedTrip := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s",
+	joinedTrip := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s",
+		id,
 		city,
 		startStation.name,
 		startStation.latitude,
@@ -128,9 +131,10 @@ func (j *StationsJoiner) joinStation(csvTrip string) (string, error) {
 func (j *StationsJoiner) sendToYearFilter(trip string) {
 	fields := strings.Split(trip, ",")
 
+	id := fields[0]
 	startStationName := fields[1]
 	year := fields[7]
 
-	tripToSend := fmt.Sprintf("%s,%s", startStationName, year)
+	tripToSend := fmt.Sprintf("%s,%s,%s", id, startStationName, year)
 	j.yearFilterProducer.Produce(tripToSend)
 }

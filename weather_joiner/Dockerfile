@@ -6,11 +6,11 @@ WORKDIR /build/
 COPY . .
 
 RUN go mod tidy
-WORKDIR /build/client
+WORKDIR /build/weather_joiner
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/client
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/weather_joiner
 
 # Deploy the application binary into a lean image
 FROM busybox:latest
-COPY --from=builder /bin/client /client
+COPY --from=builder /bin/weather_joiner /weather_joiner
 ENTRYPOINT ["/bin/sh"]

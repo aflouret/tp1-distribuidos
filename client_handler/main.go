@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
+	"time"
 	"tp1/common/middleware"
 	"tp1/common/protocol"
 )
@@ -138,12 +140,8 @@ func (s *Server) handleWeather(conn net.Conn, city string) {
 func (s *Server) handleTrips(conn net.Conn, city string) {
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 
-	_, err := protocol.Recv(conn)
-	if err != nil {
-		fmt.Printf("Error reading from connection: %v\n", err)
-		return
-	}
-
+	startTime := time.Now()
+	tripCounter := 0
 	for {
 		msg, err := protocol.Recv(conn)
 		if err != nil {
@@ -152,17 +150,23 @@ func (s *Server) handleTrips(conn net.Conn, city string) {
 		}
 		if msg.Type != protocol.Data {
 			if msg.Type != protocol.EndTrips {
-				fmt.Printf("Received wrong message: %v\n", msg)
+				fmt.Printf("Received wrong message: %v, \n", msg.Type)
 				return
 			}
 			fmt.Println("Finished receiving trips from " + city)
 			protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 			return
 		}
-
-		trip := city + "," + strings.TrimSpace(msg.Payload)
-
-		s.tripsProducer.Produce(trip)
+		lines := strings.Split(msg.Payload, ";")
+		for _, line := range lines {
+			id := strconv.Itoa(tripCounter)
+			trip := id + "," + city + "," + strings.TrimSpace(line)
+			s.tripsProducer.Produce(trip)
+			if tripCounter%10000 == 0 {
+				fmt.Printf("Time: %s Received message %s\n", time.Since(startTime).String(), id)
+			}
+			tripCounter++
+		}
 	}
 }
 

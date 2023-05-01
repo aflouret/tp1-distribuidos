@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	yearIndex = iota
+	idIndex = iota
+	yearIndex
 	startStationNameIndex
 	countIndex
 )

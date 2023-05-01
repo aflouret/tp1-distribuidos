@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 	"tp1/common/middleware"
 )
 
 const (
-	startDateIndex = iota
+	idIndex = iota
+	startDateIndex
 	durationIndex
 	precipitationsIndex
 )
@@ -17,6 +19,8 @@ type PrecipitationFilter struct {
 	producer           *middleware.Producer
 	consumer           *middleware.Consumer
 	endMessageReceived bool
+	msgCount           int
+	startTime          time.Time
 }
 
 func main() {
@@ -37,6 +41,7 @@ func NewPrecipitationFilter() *PrecipitationFilter {
 func (f *PrecipitationFilter) Run() {
 	defer f.consumer.Close()
 	defer f.producer.Close()
+	f.startTime = time.Now()
 
 	f.consumer.Consume(f.processMessage)
 }
@@ -49,8 +54,12 @@ func (f *PrecipitationFilter) processMessage(msg string) {
 		}
 		return
 	}
-	fmt.Println("Received message " + msg)
+	//fmt.Println("Received message " + msg)
 
+	if f.msgCount%10000 == 0 {
+		fmt.Printf("Time: %s Received message %s\n", time.Since(f.startTime).String(), msg)
+	}
+	f.msgCount++
 	f.filterAndSend(msg)
 }
 
@@ -62,11 +71,12 @@ func (f *PrecipitationFilter) filterAndSend(msg string) error {
 		return err
 	}
 	if precipitations > 30 {
+		id := fields[idIndex]
 		startDate := fields[startDateIndex]
 		duration := fields[durationIndex]
-		msgToSend := fmt.Sprintf("%s,%s", startDate, duration)
+		msgToSend := fmt.Sprintf("%s,%s,%s", id, startDate, duration)
 		f.producer.Produce(msgToSend)
-		fmt.Printf("Sent message %s\n", msgToSend)
+		//fmt.Printf("Sent message %s\n", msgToSend)
 	}
 	return nil
 }

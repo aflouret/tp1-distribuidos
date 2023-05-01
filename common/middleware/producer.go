@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"time"
 )
 
 type Producer struct {
@@ -13,7 +12,7 @@ type Producer struct {
 }
 
 func NewProducer(exchangeName string) *Producer {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 
 	ch, err := conn.Channel()
@@ -22,7 +21,7 @@ func NewProducer(exchangeName string) *Producer {
 	err = ch.ExchangeDeclare(
 		exchangeName, // name
 		"topic",      // type
-		true,         // durable
+		false,        // durable
 		false,        // auto-deleted
 		false,        // internal
 		false,        // no-wait
@@ -38,15 +37,13 @@ func NewProducer(exchangeName string) *Producer {
 }
 
 func (p *Producer) Produce(msg string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	err := p.ch.PublishWithContext(ctx,
+	err := p.ch.PublishWithContext(context.TODO(),
 		p.exchangeName,
 		"",
 		false,
 		false,
 		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
+			DeliveryMode: amqp.Transient,
 			ContentType:  "text/plain",
 			Body:         []byte(msg),
 		},

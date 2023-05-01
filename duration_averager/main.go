@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 	"tp1/common/middleware"
 )
 
 const (
-	startDateIndex = iota
+	idIndex = iota
+	startDateIndex
 	durationIndex
 )
 
@@ -22,6 +24,8 @@ type DurationAverager struct {
 	consumer           *middleware.Consumer
 	avgDurationsByDate map[string]average
 	endMessageReceived bool
+	msgCount           int
+	startTime          time.Time
 }
 
 func main() {
@@ -45,6 +49,7 @@ func (a *DurationAverager) Run() {
 	defer a.consumer.Close()
 	defer a.producer.Close()
 
+	a.startTime = time.Now()
 	a.consumer.Consume(a.processMessage)
 	a.sendResults()
 	for k, v := range a.avgDurationsByDate {
@@ -59,8 +64,10 @@ func (a *DurationAverager) processMessage(msg string) {
 		}
 		return
 	}
-	fmt.Println("Received message " + msg)
-
+	if a.msgCount%100 == 0 {
+		fmt.Printf("Time: %s Received message %s\n", time.Since(a.startTime).String(), msg)
+	}
+	a.msgCount++
 	a.updateAverage(msg)
 }
 

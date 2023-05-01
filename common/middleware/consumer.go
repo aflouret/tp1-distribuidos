@@ -18,7 +18,7 @@ func failOnError(err error, msg string) {
 }
 
 func NewConsumer(exchangeName string, routingKey string) *Consumer {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
 	failOnError(err, "Failed to connect to RabbitMQ")
 
 	ch, err := conn.Channel()
@@ -27,7 +27,7 @@ func NewConsumer(exchangeName string, routingKey string) *Consumer {
 	err = ch.ExchangeDeclare(
 		exchangeName, // name
 		"topic",      // type
-		true,         // durable
+		false,        // durable
 		false,        // auto-deleted
 		false,        // internal
 		false,        // no-wait
@@ -37,7 +37,7 @@ func NewConsumer(exchangeName string, routingKey string) *Consumer {
 
 	q, err := ch.QueueDeclare(
 		"",    // name
-		true,  // durable
+		false, // durable
 		false, // delete when unused
 		true,  // exclusive
 		false, // no-wait
@@ -53,17 +53,17 @@ func NewConsumer(exchangeName string, routingKey string) *Consumer {
 		nil)
 	failOnError(err, "Failed to bind a queue")
 
-	err = ch.Qos(
-		1,
-		0,
-		false,
-	)
-	failOnError(err, "Failed to set QoS")
+	//err = ch.Qos(
+	//	0,
+	//	0,
+	//	false,
+	//)
+	//failOnError(err, "Failed to set QoS")
 
 	msgs, err := ch.Consume(
 		q.Name,
 		"",
-		false,
+		true,
 		false,
 		false,
 		false,
@@ -82,7 +82,7 @@ func (c *Consumer) Consume(processMessage func(string)) {
 	for msg := range c.msgChannel {
 		msgBody := string(msg.Body)
 		processMessage(msgBody)
-		msg.Ack(false)
+		//msg.Ack(false)
 		if msgBody == "eof" {
 			return
 		}

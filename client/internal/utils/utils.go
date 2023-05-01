@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strings"
 	"tp1/common/protocol"
 )
 
@@ -15,6 +16,22 @@ func ReadLine(scanner *bufio.Scanner) (string, error) {
 	}
 
 	return line, scanner.Err()
+}
+
+func ReadBatch(scanner *bufio.Scanner) (string, error) {
+	var batch string
+
+	for i := 0; i < 20; i++ {
+		if scanner.Scan() {
+			line := scanner.Text()
+			delimiter := ";"
+			batch += line + delimiter
+		} else {
+			break
+		}
+	}
+	batch = strings.TrimSuffix(batch, ";")
+	return batch, scanner.Err()
 }
 
 func SendControlMessage(conn net.Conn, msgType uint8, payload string) error {

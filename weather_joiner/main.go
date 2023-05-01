@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"strings"
+	"time"
 	"tp1/common/middleware"
 )
 
 const (
-	tripCityIndex = iota
+	idIndex = iota
+	tripCityIndex
 	tripStartDateIndex
 	tripDurationIndex
 )
@@ -19,6 +20,8 @@ type WeatherJoiner struct {
 	weatherConsumer            *middleware.Consumer
 	precipitationsByDateByCity map[string]map[string]string
 	endMessageReceived         bool
+	msgCount                   int
+	startTime                  time.Time
 }
 
 func main() {
@@ -36,6 +39,7 @@ func NewWeatherJoiner() *WeatherJoiner {
 		tripsConsumer:              tripsConsumer,
 		weatherConsumer:            weatherConsumer,
 		precipitationsByDateByCity: precipitationsByDateByCity,
+		startTime:                  time.Now(),
 	}
 }
 
@@ -63,7 +67,7 @@ func (j *WeatherJoiner) processWeatherMessage(msg string) {
 	}
 	j.precipitationsByDateByCity[city][date] = precipitations
 
-	log.Printf("Received weather: %s\n", msg)
+	//log.Printf("Received weather: %s\n", msg)
 }
 
 func (j *WeatherJoiner) processTripMessage(msg string) {
@@ -76,14 +80,19 @@ func (j *WeatherJoiner) processTripMessage(msg string) {
 	}
 	joinedTrip, err := j.joinWeather(msg)
 	if err != nil {
-		fmt.Println("ERROR " + err.Error())
+		//fmt.Println("ERROR " + err.Error())
 	} else {
 		j.producer.Produce(joinedTrip)
 	}
+	if j.msgCount%10000 == 0 {
+		fmt.Printf("Time: %s Received message %s\n", time.Since(j.startTime).String(), msg)
+	}
+	j.msgCount++
 }
 
 func (j *WeatherJoiner) joinWeather(csvTrip string) (string, error) {
 	tripFields := strings.Split(csvTrip, ",")
+	id := tripFields[idIndex]
 	city := tripFields[tripCityIndex]
 	startDate := tripFields[tripStartDateIndex]
 	duration := tripFields[tripDurationIndex]
@@ -93,7 +102,8 @@ func (j *WeatherJoiner) joinWeather(csvTrip string) (string, error) {
 		return "", fmt.Errorf("weather not found: %s %s", city, startDate)
 	}
 
-	joinedTrip := fmt.Sprintf("%s,%s,%s",
+	joinedTrip := fmt.Sprintf("%s,%s,%s,%s",
+		id,
 		startDate,
 		duration,
 		precipitations,

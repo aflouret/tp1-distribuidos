@@ -1,15 +1,16 @@
 FROM golang:1.19 AS builder
 
-WORKDIR server/
-
-COPY go.mod ./
-RUN go mod tidy
+RUN mkdir -p /build
+WORKDIR /build/
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/server
+RUN go mod tidy
+WORKDIR /build/client_handler
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/client_handler
 
 # Deploy the application binary into a lean image
 FROM busybox:latest
-COPY --from=builder /bin/server /server
+COPY --from=builder /bin/client_handler /client_handler
 ENTRYPOINT ["/bin/sh"]

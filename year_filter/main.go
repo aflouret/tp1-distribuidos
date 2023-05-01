@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	startStationNameIndex = iota
+	idIndex = iota
+	startStationNameIndex
 	yearIndex
 )
 
@@ -55,10 +56,11 @@ func (f *YearFilter) processMessage(msg string) {
 func (f *YearFilter) filterAndSend(msg string) error {
 	fields := strings.Split(msg, ",")
 	year := fields[yearIndex]
+	id := fields[idIndex]
 	if year == "2016" || year == "2017" {
 		startStationName := fields[startStationNameIndex]
 		f.producer.Produce(startStationName)
-		fmt.Printf("Sent message %s\n", startStationName)
+		fmt.Printf("Sent message %s,%s\n", id, startStationName)
 	}
 	return nil
 }
