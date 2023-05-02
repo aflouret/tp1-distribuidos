@@ -84,7 +84,7 @@ func (s *ClientHandler) handleStations(conn net.Conn, city string) {
 		}
 		if msg.Type != protocol.Data {
 			if msg.Type != protocol.EndStations {
-				fmt.Printf("Received wrong message: %v\n", msg)
+				fmt.Printf("Received invalid message: %v\n", msg)
 				return
 			}
 			fmt.Println("Finished receiving stations from " + city)
@@ -111,7 +111,7 @@ func (s *ClientHandler) handleWeather(conn net.Conn, city string) {
 		}
 		if msg.Type != protocol.Data {
 			if msg.Type != protocol.EndWeather {
-				fmt.Printf("Received wrong message: %v\n", msg)
+				fmt.Printf("Received invalid message: %v\n", msg)
 				return
 			}
 			fmt.Println("Finished receiving weather from " + city)
@@ -141,7 +141,7 @@ func (s *ClientHandler) handleTrips(conn net.Conn, city string) {
 		}
 		if msg.Type != protocol.Data {
 			if msg.Type != protocol.EndTrips {
-				fmt.Printf("Received wrong message: %v, \n", msg.Type)
+				fmt.Printf("Received invalid message: %v, \n", msg.Type)
 				return
 			}
 			fmt.Println("Finished receiving trips from " + city)

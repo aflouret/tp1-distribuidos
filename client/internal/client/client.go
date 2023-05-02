@@ -19,6 +19,7 @@ var ErrClientTerminated = errors.New("client terminated")
 type Config struct {
 	ServerAddress string
 	TripsFile     string
+	BatchSize     int
 }
 
 type Client struct {
@@ -66,7 +67,6 @@ func (c *Client) StartClient() {
 		log.Errorf("action: request_results | result: fail | error: %v", err)
 		return
 	}
-	log.Infof("action: send_trips | result: success")
 }
 
 func (c *Client) sendStationsToServer() error {
@@ -92,7 +92,7 @@ func (c *Client) sendStationsToServer() error {
 		scanner := bufio.NewScanner(file)
 		scanner.Scan()
 		for {
-			stations, err := utils.ReadBatch(scanner)
+			stations, err := utils.ReadBatch(scanner, c.config.BatchSize)
 			if err != nil {
 				return err
 			}
@@ -144,7 +144,7 @@ func (c *Client) sendWeatherToServer() error {
 		scanner := bufio.NewScanner(file)
 		scanner.Scan()
 		for {
-			weather, err := utils.ReadBatch(scanner)
+			weather, err := utils.ReadBatch(scanner, c.config.BatchSize)
 			if err != nil {
 				return err
 			}
@@ -206,7 +206,7 @@ func (c *Client) sendTripsToServer() error {
 		scanner := bufio.NewScanner(file)
 		scanner.Scan()
 		for {
-			trips, err := utils.ReadBatch(scanner)
+			trips, err := utils.ReadBatch(scanner, c.config.BatchSize)
 			if err != nil {
 				return err
 			}

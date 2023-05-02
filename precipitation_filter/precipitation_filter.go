@@ -16,16 +16,18 @@ const (
 )
 
 type PrecipitationFilter struct {
-	producer  *middleware.Producer
-	consumer  *middleware.Consumer
-	msgCount  int
-	startTime time.Time
+	producer              *middleware.Producer
+	consumer              *middleware.Consumer
+	minimumPrecipitations float64
+	msgCount              int
+	startTime             time.Time
 }
 
-func NewPrecipitationFilter(consumer *middleware.Consumer, producer *middleware.Producer) *PrecipitationFilter {
+func NewPrecipitationFilter(consumer *middleware.Consumer, producer *middleware.Producer, minimumPrecipitations float64) *PrecipitationFilter {
 	return &PrecipitationFilter{
-		producer: producer,
-		consumer: consumer,
+		producer:              producer,
+		consumer:              consumer,
+		minimumPrecipitations: minimumPrecipitations,
 	}
 }
 
@@ -58,7 +60,7 @@ func (f *PrecipitationFilter) filterAndSend(msg string) error {
 	if err != nil {
 		return err
 	}
-	if precipitations > 30 {
+	if precipitations > f.minimumPrecipitations {
 		id := fields[idIndex]
 		startDate := fields[startDateIndex]
 		duration := fields[durationIndex]

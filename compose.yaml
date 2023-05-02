@@ -61,6 +61,8 @@ services:
     environment:
       - PREV_STAGE_INSTANCES=1
       - NEXT_STAGE_INSTANCES=1
+      - YEAR_1=2016
+      - YEAR_2=2017
     build:
       context: .
       dockerfile: ./count_merger/Dockerfile
@@ -75,6 +77,7 @@ services:
     environment:
       - PREV_STAGE_INSTANCES=1
       - NEXT_STAGE_INSTANCES=1
+      - MIN_DISTANCE=6
     build:
       context: .
       dockerfile: ./distance_merger/Dockerfile
@@ -107,6 +110,7 @@ services:
       - ID=0
       - PREV_STAGE_INSTANCES=1
       - NEXT_STAGE_INSTANCES=1
+      - MIN_PRECIPITATIONS=30
     build:
       context: .
       dockerfile: ./precipitation_filter/Dockerfile

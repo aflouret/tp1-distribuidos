@@ -21,6 +21,9 @@ distance_averager_instances = int(config["DEFAULT"]["DISTANCE_AVERAGER_INSTANCES
 year_1 = int(config["DEFAULT"]["YEAR_1"])
 year_2 = int(config["DEFAULT"]["YEAR_2"])
 
+minimum_distance = config["DEFAULT"]["MIN_DISTANCE"]
+minimum_precipitations = config["DEFAULT"]["MIN_PRECIPITATIONS"]
+
 data_dropper_string = ""
 for i in range(0, data_dropper_instances):
     data_dropper_string = data_dropper_string + f'''
@@ -91,6 +94,7 @@ for i in range(0, precipitation_filter_instances):
       - ID={i}
       - PREV_STAGE_INSTANCES={weather_joiner_instances}
       - NEXT_STAGE_INSTANCES={duration_averager_instances}
+      - MIN_PRECIPITATIONS={minimum_precipitations}
     build:
       context: .
       dockerfile: ./precipitation_filter/Dockerfile
@@ -281,6 +285,8 @@ file_content = f'''services:
     environment:
       - PREV_STAGE_INSTANCES={trip_counter_instances}
       - NEXT_STAGE_INSTANCES=1
+      - YEAR_1={year_1}
+      - YEAR_2={year_2}
     build:
       context: .
       dockerfile: ./count_merger/Dockerfile
@@ -295,6 +301,7 @@ file_content = f'''services:
     environment:
       - PREV_STAGE_INSTANCES={distance_averager_instances}
       - NEXT_STAGE_INSTANCES=1
+      - MIN_DISTANCE={minimum_distance}
     build:
       context: .
       dockerfile: ./distance_merger/Dockerfile

@@ -21,15 +21,17 @@ type average struct {
 type DistanceMerger struct {
 	producer                  *middleware.Producer
 	consumer                  *middleware.Consumer
+	minimumDistance           float64
 	averageDistancesByStation map[string]average
 }
 
-func NewDistanceMerger(consumer *middleware.Consumer, producer *middleware.Producer) *DistanceMerger {
+func NewDistanceMerger(consumer *middleware.Consumer, producer *middleware.Producer, minimumDistance float64) *DistanceMerger {
 	averageDistancesByStation := make(map[string]average)
 
 	return &DistanceMerger{
 		producer:                  producer,
 		consumer:                  consumer,
+		minimumDistance:           minimumDistance,
 		averageDistancesByStation: averageDistancesByStation,
 	}
 }
@@ -76,11 +78,11 @@ func (m *DistanceMerger) mergeResults(msg string) error {
 }
 
 func (m *DistanceMerger) sendResults() {
-	result := "Stations with more than 6km average to arrive at them:\n"
+	result := fmt.Sprintf("Stations with more than %v km average to arrive at them:\n", m.minimumDistance)
 	result += "end_station_name,average_distance\n"
 
 	for k, v := range m.averageDistancesByStation { // DISTANCE MERGER
-		if v.avg > 5 {
+		if v.avg > m.minimumDistance {
 			result += fmt.Sprintf("%s,%v\n", k, v.avg)
 		}
 	}

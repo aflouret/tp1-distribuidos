@@ -22,14 +22,14 @@ type CountMerger struct {
 	countByStationYear2 map[string]int
 }
 
-func NewCountMerger(consumer *middleware.Consumer, producer *middleware.Producer) *CountMerger {
+func NewCountMerger(consumer *middleware.Consumer, producer *middleware.Producer, year1 string, year2 string) *CountMerger {
 	countByStationYear1 := make(map[string]int)
 	countByStationYear2 := make(map[string]int)
 	return &CountMerger{
 		producer:            producer,
 		consumer:            consumer,
-		year1:               "2016",
-		year2:               "2017",
+		year1:               year1,
+		year2:               year2,
 		countByStationYear1: countByStationYear1,
 		countByStationYear2: countByStationYear2,
 	}
@@ -91,5 +91,4 @@ func (m *CountMerger) sendResults() {
 	}
 
 	m.producer.PublishMessage(result, "")
-	fmt.Println(result)
 }

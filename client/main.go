@@ -29,6 +29,7 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("server", "address")
 	v.BindEnv("log", "level")
 	v.BindEnv("trips", "filename")
+	v.BindEnv("batch", "size")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -60,17 +61,6 @@ func InitLogger(logLevel string) error {
 	return nil
 }
 
-// PrintConfig Print all the configuration parameters of the program.
-// For debugging purposes only
-func PrintConfig(v *viper.Viper) {
-	log.Debugf("action: config | result: success | client_id: %s | server_address: %s | loop_lapse: %v | loop_period: %v | log_level: %s | batch_size: %v",
-		v.GetString("id"),
-		v.GetString("server.address"),
-		v.GetString("log.level"),
-		v.Get("trips.filename"),
-	)
-}
-
 func main() {
 	v, err := InitConfig()
 	if err != nil {
@@ -81,12 +71,10 @@ func main() {
 		log.Fatalf("%s", err)
 	}
 
-	// Print program config with debugging purposes
-	PrintConfig(v)
-
 	clientConfig := client.Config{
 		ServerAddress: v.GetString("server.address"),
 		TripsFile:     v.GetString("trips.filename"),
+		BatchSize:     v.GetInt("batch.size"),
 	}
 
 	client := client.NewClient(clientConfig)

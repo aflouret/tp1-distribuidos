@@ -4,14 +4,18 @@ import (
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 type Consumer struct {
-	conn          *amqp.Connection
-	ch            *amqp.Channel
-	msgChannel    <-chan amqp.Delivery
-	eofsReceived  int
-	producerCount int
+	conn           *amqp.Connection
+	ch             *amqp.Channel
+	msgChannel     <-chan amqp.Delivery
+	eofsReceived   int
+	producerCount  int
+	sigtermChannel chan os.Signal
 }
 
 func failOnError(err error, msg string) {
@@ -75,29 +79,37 @@ func NewConsumer(exchangeName string, routingKey string, producerCount int, cons
 	)
 	failOnError(err, "Failed to register a consumer")
 
+	sigtermChannel := make(chan os.Signal, 1)
+	signal.Notify(sigtermChannel, syscall.SIGTERM)
 	return &Consumer{
-		conn:          conn,
-		ch:            ch,
-		msgChannel:    msgs,
-		eofsReceived:  0,
-		producerCount: producerCount,
+		conn:           conn,
+		ch:             ch,
+		msgChannel:     msgs,
+		eofsReceived:   0,
+		producerCount:  producerCount,
+		sigtermChannel: sigtermChannel,
 	}
 }
 
 func (c *Consumer) Consume(processMessage func(string)) {
-	for msg := range c.msgChannel {
-		msgBody := string(msg.Body)
-		if msgBody == "eof" {
-			fmt.Printf("Received eof %v\n", c.eofsReceived)
-			c.eofsReceived++
-			if c.eofsReceived == c.producerCount {
-				fmt.Println("Received all eofs")
-				processMessage(msgBody)
-				return
+	for {
+		select {
+		case <-c.sigtermChannel:
+			return
+		case msg := <-c.msgChannel:
+			msgBody := string(msg.Body)
+			if msgBody == "eof" {
+				fmt.Printf("Received eof %v\n", c.eofsReceived)
+				c.eofsReceived++
+				if c.eofsReceived == c.producerCount {
+					fmt.Println("Received all eofs")
+					processMessage(msgBody)
+					return
+				}
+				continue
 			}
-			continue
+			processMessage(msgBody)
 		}
-		processMessage(msgBody)
 
 	}
 }

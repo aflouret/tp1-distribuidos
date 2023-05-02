@@ -8,20 +8,10 @@ import (
 	"tp1/common/protocol"
 )
 
-func ReadLine(scanner *bufio.Scanner) (string, error) {
-	var line string
-
-	if scanner.Scan() {
-		line = scanner.Text()
-	}
-
-	return line, scanner.Err()
-}
-
-func ReadBatch(scanner *bufio.Scanner) (string, error) {
+func ReadBatch(scanner *bufio.Scanner, size int) (string, error) {
 	var batch string
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < size; i++ {
 		if scanner.Scan() {
 			line := scanner.Text()
 			delimiter := ";"
