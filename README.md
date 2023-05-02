@@ -49,6 +49,9 @@ docker compose up --build
 
 ## Vista lógica
 
+### DAG
+![DAG](/docs/DAG.png?raw=true)
+
 ## Vista de procesos
 
 ## Vista de desarrollo
