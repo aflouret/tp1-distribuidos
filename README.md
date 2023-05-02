@@ -50,13 +50,17 @@ docker compose up --build
 ## Vista lógica
 
 ### DAG
-![DAG](/docs/DAG.png?raw=true)
+![DAG](/docs/DAG.png)
 
 ## Vista de procesos
 
 ## Vista de desarrollo
 
 ## Vista física
+### Diagrama de robustez
+![Diagrama de robustez](/docs/Robustez.png)
 
+### Diagrama de despliegue
+![Diagrama de despliegue](/docs/Despliegue.png)
 
 
