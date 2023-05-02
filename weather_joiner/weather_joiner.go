@@ -57,10 +57,16 @@ func (j *WeatherJoiner) processWeatherMessage(msg string) {
 	date := fields[1]
 	precipitations := fields[2]
 
+	previousDate, err := getPreviousDate(date)
+	if err != nil {
+		fmt.Printf("error parsing date: %s", err)
+		return
+	}
+
 	if _, ok := j.precipitationsByDateByCity[city]; !ok {
 		j.precipitationsByDateByCity[city] = make(map[string]string)
 	}
-	j.precipitationsByDateByCity[city][date] = precipitations
+	j.precipitationsByDateByCity[city][previousDate] = precipitations
 
 	//log.Printf("Received weather: %s\n", msg)
 }

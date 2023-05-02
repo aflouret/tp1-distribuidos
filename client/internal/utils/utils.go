@@ -21,7 +21,7 @@ func ReadLine(scanner *bufio.Scanner) (string, error) {
 func ReadBatch(scanner *bufio.Scanner) (string, error) {
 	var batch string
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 50; i++ {
 		if scanner.Scan() {
 			line := scanner.Text()
 			delimiter := ";"
@@ -55,5 +55,13 @@ func SendDataMessage(conn net.Conn, payload string) error {
 	if err != nil {
 		return err
 	}
+	ackMessage, err := protocol.Recv(conn)
+	if err != nil {
+		return err
+	}
+	if ackMessage.Type != protocol.Ack {
+		return fmt.Errorf("received wrong message")
+	}
+
 	return nil
 }

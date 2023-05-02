@@ -90,12 +90,13 @@ func (c *Client) sendStationsToServer() error {
 		}
 
 		scanner := bufio.NewScanner(file)
+		scanner.Scan()
 		for {
-			station, err := utils.ReadLine(scanner)
+			stations, err := utils.ReadBatch(scanner)
 			if err != nil {
 				return err
 			}
-			if len(station) == 0 {
+			if len(stations) == 0 {
 				err = c.notifyEndStations(city)
 				if err != nil {
 					return err
@@ -103,10 +104,9 @@ func (c *Client) sendStationsToServer() error {
 				break
 			}
 
-			if err = c.sendDataMessage(station); err != nil {
+			if err = c.sendDataMessage(stations); err != nil {
 				return err
 			}
-
 			select {
 			case <-sigtermNotifier:
 				log.Debugf("action: terminate_client | result: success")
@@ -142,8 +142,9 @@ func (c *Client) sendWeatherToServer() error {
 		}
 
 		scanner := bufio.NewScanner(file)
+		scanner.Scan()
 		for {
-			weather, err := utils.ReadLine(scanner)
+			weather, err := utils.ReadBatch(scanner)
 			if err != nil {
 				return err
 			}
@@ -158,7 +159,6 @@ func (c *Client) sendWeatherToServer() error {
 			if err = c.sendDataMessage(weather); err != nil {
 				return err
 			}
-
 			select {
 			case <-sigtermNotifier:
 				log.Debugf("action: terminate_client | result: success ")
@@ -206,11 +206,11 @@ func (c *Client) sendTripsToServer() error {
 		scanner := bufio.NewScanner(file)
 		scanner.Scan()
 		for {
-			trip, err := utils.ReadLine(scanner)
+			trips, err := utils.ReadBatch(scanner)
 			if err != nil {
 				return err
 			}
-			if len(trip) == 0 {
+			if len(trips) == 0 {
 				err = c.notifyEndTrips(city)
 				if err != nil {
 					return err
@@ -218,7 +218,7 @@ func (c *Client) sendTripsToServer() error {
 				break
 			}
 
-			if err = c.sendDataMessage(trip); err != nil {
+			if err = c.sendDataMessage(trips); err != nil {
 				return err
 			}
 

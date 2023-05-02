@@ -76,12 +76,6 @@ func (s *ClientHandler) handleConnection(conn net.Conn) {
 func (s *ClientHandler) handleStations(conn net.Conn, city string) {
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 
-	_, err := protocol.Recv(conn)
-	if err != nil {
-		fmt.Printf("Error reading from connection: %v\n", err)
-		return
-	}
-
 	for {
 		msg, err := protocol.Recv(conn)
 		if err != nil {
@@ -97,20 +91,17 @@ func (s *ClientHandler) handleStations(conn net.Conn, city string) {
 			protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 			return
 		}
-
-		station := city + "," + strings.TrimSpace(msg.Payload)
-		s.stationsProducer.PublishMessage(station, "")
+		protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
+		lines := strings.Split(msg.Payload, ";")
+		for _, line := range lines {
+			station := city + "," + strings.TrimSpace(line)
+			s.stationsProducer.PublishMessage(station, "")
+		}
 	}
 }
 
 func (s *ClientHandler) handleWeather(conn net.Conn, city string) {
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
-
-	_, err := protocol.Recv(conn)
-	if err != nil {
-		fmt.Printf("Error reading from connection: %v\n", err)
-		return
-	}
 
 	for {
 		msg, err := protocol.Recv(conn)
@@ -127,9 +118,13 @@ func (s *ClientHandler) handleWeather(conn net.Conn, city string) {
 			protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 			return
 		}
+		protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
+		lines := strings.Split(msg.Payload, ";")
+		for _, line := range lines {
+			weather := city + "," + strings.TrimSpace(line)
+			s.weatherProducer.PublishMessage(weather, "")
+		}
 
-		weather := city + "," + strings.TrimSpace(msg.Payload)
-		s.weatherProducer.PublishMessage(weather, "")
 	}
 }
 
@@ -153,6 +148,7 @@ func (s *ClientHandler) handleTrips(conn net.Conn, city string) {
 			protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 			return
 		}
+		protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 		lines := strings.Split(msg.Payload, ";")
 		for _, line := range lines {
 			id := strconv.Itoa(tripCounter)

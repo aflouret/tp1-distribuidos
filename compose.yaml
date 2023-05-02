@@ -25,6 +25,23 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  client:
+    container_name: client
+    build:
+      context: .
+      dockerfile: ./client/Dockerfile
+    entrypoint: /client
+    restart: on-failure
+    depends_on:
+      - client_handler
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data
+      - type: bind
+        source: ./client/config.yaml
+        target: /config.yaml
+
   duration_merger:
     container_name: duration_merger
     environment:

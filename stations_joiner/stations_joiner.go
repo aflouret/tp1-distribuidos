@@ -55,7 +55,7 @@ func (j *StationsJoiner) Run() {
 }
 
 func (j *StationsJoiner) processStationMessage(msg string) {
-	fmt.Printf("Received station: %s\n", msg)
+	//fmt.Printf("Received station: %s\n", msg)
 	if msg == "eof" {
 		return
 	}
