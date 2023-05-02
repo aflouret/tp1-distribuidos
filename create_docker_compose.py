@@ -171,6 +171,8 @@ for i in range(0, year_filter_instances):
       - ID={i}
       - PREV_STAGE_INSTANCES={stations_joiner_instances}
       - NEXT_STAGE_INSTANCES={trip_counter_instances}
+      - YEAR_1={year_1}
+      - YEAR_2={year_2}
     build:
       context: .
       dockerfile: ./year_filter/Dockerfile

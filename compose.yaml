@@ -177,6 +177,8 @@ services:
       - ID=0
       - PREV_STAGE_INSTANCES=1
       - NEXT_STAGE_INSTANCES=1
+      - YEAR_1=2016
+      - YEAR_2=2017
     build:
       context: .
       dockerfile: ./year_filter/Dockerfile

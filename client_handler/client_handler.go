@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 	"tp1/common/middleware"
 	"tp1/common/protocol"
@@ -15,6 +18,7 @@ type ClientHandler struct {
 	stationsProducer *middleware.Producer
 	weatherProducer  *middleware.Producer
 	resultsConsumer  *middleware.Consumer
+	sigtermNotifier  chan os.Signal
 }
 
 func NewClientHandler(
@@ -23,11 +27,15 @@ func NewClientHandler(
 	weatherProducer *middleware.Producer,
 	resultsConsumer *middleware.Consumer,
 ) *ClientHandler {
+	sigtermNotifier := make(chan os.Signal, 1)
+	signal.Notify(sigtermNotifier, syscall.SIGTERM)
+
 	return &ClientHandler{
 		tripsProducer:    tripsProducer,
 		stationsProducer: stationsProducer,
 		weatherProducer:  weatherProducer,
 		resultsConsumer:  resultsConsumer,
+		sigtermNotifier:  sigtermNotifier,
 	}
 }
 
@@ -46,12 +54,15 @@ func (s *ClientHandler) Run() {
 			continue
 		}
 		fmt.Printf("New connection from: %v\n", conn.RemoteAddr())
-		s.handleConnection(conn)
+		if shouldExit := s.handleConnection(conn); shouldExit {
+			break
+		}
 	}
 	s.tripsProducer.Close()
+	s.resultsConsumer.Close()
 }
 
-func (s *ClientHandler) handleConnection(conn net.Conn) {
+func (s *ClientHandler) handleConnection(conn net.Conn) (shouldExit bool) {
 	defer conn.Close()
 
 	msg, err := protocol.Recv(conn)
@@ -61,22 +72,30 @@ func (s *ClientHandler) handleConnection(conn net.Conn) {
 	}
 	switch msg.Type {
 	case protocol.BeginStations:
-		s.handleStations(conn, msg.Payload)
+		shouldExit = s.handleStations(conn, msg.Payload)
 	case protocol.BeginWeather:
-		s.handleWeather(conn, msg.Payload)
+		shouldExit = s.handleWeather(conn, msg.Payload)
 	case protocol.EndStaticData:
 		s.handleEndStaticData(conn)
 	case protocol.BeginTrips:
-		s.handleTrips(conn, msg.Payload)
+		shouldExit = s.handleTrips(conn, msg.Payload)
 	case protocol.GetResults:
 		s.handleResults(conn)
+		shouldExit = true
 	}
+	return
 }
 
-func (s *ClientHandler) handleStations(conn net.Conn, city string) {
+func (s *ClientHandler) handleStations(conn net.Conn, city string) (shouldExit bool) {
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 
 	for {
+		select {
+		case <-s.sigtermNotifier:
+			shouldExit = true
+			return
+		default:
+		}
 		msg, err := protocol.Recv(conn)
 		if err != nil {
 			fmt.Printf("Error reading from connection: %v\n", err)
@@ -100,10 +119,16 @@ func (s *ClientHandler) handleStations(conn net.Conn, city string) {
 	}
 }
 
-func (s *ClientHandler) handleWeather(conn net.Conn, city string) {
+func (s *ClientHandler) handleWeather(conn net.Conn, city string) (shouldExit bool) {
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 
 	for {
+		select {
+		case <-s.sigtermNotifier:
+			shouldExit = true
+			return
+		default:
+		}
 		msg, err := protocol.Recv(conn)
 		if err != nil {
 			fmt.Printf("Error reading from connection: %v\n", err)
@@ -128,12 +153,18 @@ func (s *ClientHandler) handleWeather(conn net.Conn, city string) {
 	}
 }
 
-func (s *ClientHandler) handleTrips(conn net.Conn, city string) {
+func (s *ClientHandler) handleTrips(conn net.Conn, city string) (shouldExit bool) {
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 
 	startTime := time.Now()
 	tripCounter := 0
 	for {
+		select {
+		case <-s.sigtermNotifier:
+			shouldExit = true
+			return
+		default:
+		}
 		msg, err := protocol.Recv(conn)
 		if err != nil {
 			fmt.Printf("Error reading from connection: %v\n", err)

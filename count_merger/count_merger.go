@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"tp1/common/middleware"
@@ -79,13 +80,20 @@ func (m *CountMerger) mergeResults(msg string) error {
 }
 
 func (m *CountMerger) sendResults() {
+	sortedStations := make([]string, 0, len(m.countByStationYear2))
+	for k := range m.countByStationYear2 {
+		sortedStations = append(sortedStations, k)
+	}
+	sort.Strings(sortedStations)
+
 	result := fmt.Sprintf("Stations that doubled the number of trips between %s and %s:\n", m.year1, m.year2)
 	result += fmt.Sprintf("start_station_name,trips_count_%s,trips_count_%s\n", m.year2, m.year1)
 
-	for k, countYear2 := range m.countByStationYear2 {
-		if countYear1, ok := m.countByStationYear1[k]; ok {
+	for _, s := range sortedStations {
+		countYear2 := m.countByStationYear2[s]
+		if countYear1, ok := m.countByStationYear1[s]; ok {
 			if countYear2 > 2*countYear1 {
-				result += fmt.Sprintf("%s,%v,%v\n", k, countYear2, countYear1)
+				result += fmt.Sprintf("%s,%v,%v\n", s, countYear2, countYear1)
 			}
 		}
 	}

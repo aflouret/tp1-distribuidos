@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"tp1/common/middleware"
@@ -76,12 +77,20 @@ func (m *DurationMerger) mergeResults(msg string) error {
 }
 
 func (m *DurationMerger) sendResults() {
+	sortedDates := make([]string, 0, len(m.avgDurationsByDate))
+	for k := range m.avgDurationsByDate {
+		sortedDates = append(sortedDates, k)
+	}
+	sort.Strings(sortedDates)
+
 	result := "Average duration of trips during >30mm precipitation days:\n"
 	result += "start_date,average_duration\n"
 
-	for k, v := range m.avgDurationsByDate {
-		result += fmt.Sprintf("%s,%v\n", k, v.avg)
+	for _, date := range sortedDates {
+		avg := m.avgDurationsByDate[date].avg
+		result += fmt.Sprintf("%s,%v\n", date, avg)
 	}
+
 	m.producer.PublishMessage(result, "")
 	fmt.Println(result)
 }

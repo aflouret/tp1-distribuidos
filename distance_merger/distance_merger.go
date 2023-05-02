@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"tp1/common/middleware"
@@ -78,12 +79,19 @@ func (m *DistanceMerger) mergeResults(msg string) error {
 }
 
 func (m *DistanceMerger) sendResults() {
+	sortedStations := make([]string, 0, len(m.averageDistancesByStation))
+	for k := range m.averageDistancesByStation {
+		sortedStations = append(sortedStations, k)
+	}
+	sort.Strings(sortedStations)
+
 	result := fmt.Sprintf("Stations with more than %v km average to arrive at them:\n", m.minimumDistance)
 	result += "end_station_name,average_distance\n"
 
-	for k, v := range m.averageDistancesByStation { // DISTANCE MERGER
-		if v.avg > m.minimumDistance {
-			result += fmt.Sprintf("%s,%v\n", k, v.avg)
+	for _, s := range sortedStations {
+		avg := m.averageDistancesByStation[s].avg
+		if avg > m.minimumDistance {
+			result += fmt.Sprintf("%s,%v\n", s, avg)
 		}
 	}
 	m.producer.PublishMessage(result, "")

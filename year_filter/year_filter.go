@@ -14,12 +14,16 @@ const (
 type YearFilter struct {
 	producer *middleware.Producer
 	consumer *middleware.Consumer
+	year1    string
+	year2    string
 }
 
-func NewYearFilter(producer *middleware.Producer, consumer *middleware.Consumer) *YearFilter {
+func NewYearFilter(producer *middleware.Producer, consumer *middleware.Consumer, year1 string, year2 string) *YearFilter {
 	return &YearFilter{
 		producer: producer,
 		consumer: consumer,
+		year1:    year1,
+		year2:    year2,
 	}
 }
 
@@ -43,7 +47,7 @@ func (f *YearFilter) processMessage(msg string) {
 func (f *YearFilter) filterAndSend(msg string) error {
 	fields := strings.Split(msg, ",")
 	year := fields[yearIndex]
-	if year == "2016" || year == "2017" {
+	if year == f.year1 || year == f.year2 {
 		startStationName := fields[startStationNameIndex]
 		id := fields[idIndex]
 		messageToSend := id + "," + startStationName
