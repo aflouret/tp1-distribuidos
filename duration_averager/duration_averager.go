@@ -83,7 +83,7 @@ func (a *DurationAverager) updateAverage(msg string) error {
 func (a *DurationAverager) sendResults() {
 	for k, v := range a.avgDurationsByDate {
 		result := fmt.Sprintf("%s,%v,%v", k, v.avg, v.count)
-		a.producer.PublishMessage(result)
+		a.producer.PublishMessage(result, "")
 	}
-	a.producer.PublishMessage("eof")
+	a.producer.PublishMessage("eof", "")
 }

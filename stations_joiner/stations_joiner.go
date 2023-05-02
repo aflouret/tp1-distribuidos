@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"strings"
 	"tp1/common/middleware"
 )
@@ -22,28 +21,32 @@ type station struct {
 }
 
 type StationsJoiner struct {
-	yearFilterProducer *middleware.Producer
-	tripsConsumer      *middleware.Consumer
-	stationsConsumer   *middleware.Consumer
-	stations           map[string]station
+	yearFilterProducer         *middleware.Producer
+	distanceCalculatorProducer *middleware.Producer
+	tripsConsumer              *middleware.Consumer
+	stationsConsumer           *middleware.Consumer
+	stations                   map[string]station
 }
 
 func NewStationsJoiner(
 	tripsConsumer *middleware.Consumer,
 	stationsConsumer *middleware.Consumer,
 	yearFilterProducer *middleware.Producer,
+	distanceCalculatorProducer *middleware.Producer,
 ) *StationsJoiner {
 	stations := make(map[string]station)
 	return &StationsJoiner{
-		tripsConsumer:      tripsConsumer,
-		stationsConsumer:   stationsConsumer,
-		yearFilterProducer: yearFilterProducer,
-		stations:           stations,
+		tripsConsumer:              tripsConsumer,
+		stationsConsumer:           stationsConsumer,
+		yearFilterProducer:         yearFilterProducer,
+		distanceCalculatorProducer: distanceCalculatorProducer,
+		stations:                   stations,
 	}
 }
 
 func (j *StationsJoiner) Run() {
-	//defer j.yearFilterProducer.Close()
+	defer j.yearFilterProducer.Close()
+	defer j.distanceCalculatorProducer.Close()
 
 	j.stationsConsumer.Consume(j.processStationMessage)
 	j.stationsConsumer.Close()
@@ -52,6 +55,7 @@ func (j *StationsJoiner) Run() {
 }
 
 func (j *StationsJoiner) processStationMessage(msg string) {
+	fmt.Printf("Received station: %s\n", msg)
 	if msg == "eof" {
 		return
 	}
@@ -67,17 +71,23 @@ func (j *StationsJoiner) processStationMessage(msg string) {
 	key := getStationKey(code, year, city)
 	j.stations[key] = station{name, latitude, longitude}
 
-	log.Printf("Received station: %s\n", msg)
 }
 
 func (j *StationsJoiner) processTripMessage(msg string) {
+	//log.Printf("Received trip: %s\n", msg)
 	if msg == "eof" {
-		j.yearFilterProducer.PublishMessage(msg)
+		j.yearFilterProducer.PublishMessage(msg, "")
+		j.distanceCalculatorProducer.PublishMessage(msg, "")
 		return
 	}
-	joinedTrip, _ := j.joinStation(msg)
+	joinedTrip, err := j.joinStation(msg)
+	if err != nil {
+		fmt.Printf("Error joining station %s: %s\n", msg, err.Error())
+		return
+	}
 	j.sendToYearFilter(joinedTrip)
-	log.Printf("joined trip: %s\n", joinedTrip)
+	j.sendToDistanceCalculator(joinedTrip)
+	//log.Printf("joined trip: %s\n", joinedTrip)
 }
 
 func getStationKey(code, year, city string) string {
@@ -124,9 +134,17 @@ func (j *StationsJoiner) sendToYearFilter(trip string) {
 	fields := strings.Split(trip, ",")
 
 	id := fields[0]
-	startStationName := fields[1]
-	year := fields[7]
+	startStationName := fields[2]
+	year := fields[8]
 
 	tripToSend := fmt.Sprintf("%s,%s,%s", id, startStationName, year)
-	j.yearFilterProducer.PublishMessage(tripToSend)
+	j.yearFilterProducer.PublishMessage(tripToSend, "")
+}
+
+func (j *StationsJoiner) sendToDistanceCalculator(trip string) {
+	fields := strings.Split(trip, ",")
+	city := fields[1]
+	if city == "montreal" {
+		j.distanceCalculatorProducer.PublishMessage(trip, "")
+	}
 }

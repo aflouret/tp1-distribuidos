@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 	"tp1/client/internal/utils"
 	"tp1/common/protocol"
 )
@@ -18,11 +17,8 @@ var cities = []string{"montreal", "toronto", "washington"}
 var ErrClientTerminated = errors.New("client terminated")
 
 type Config struct {
-	ID            string
 	ServerAddress string
-	LoopLapse     time.Duration
-	LoopPeriod    time.Duration
-	BatchSize     int
+	TripsFile     string
 }
 
 type Client struct {
@@ -41,8 +37,7 @@ func (c *Client) connectToServer() error {
 	conn, err := net.Dial("tcp", c.config.ServerAddress)
 	if err != nil {
 		log.Fatalf(
-			"action: connect | result: fail | client_id: %v | error: %v",
-			c.config.ID,
+			"action: connect | result: fail | error: %v",
 			err,
 		)
 	}
@@ -114,7 +109,7 @@ func (c *Client) sendStationsToServer() error {
 
 			select {
 			case <-sigtermNotifier:
-				log.Debugf("action: terminate_client | result: success | client_id: %v", c.config.ID)
+				log.Debugf("action: terminate_client | result: success")
 				return ErrClientTerminated
 			default:
 			}
@@ -166,7 +161,7 @@ func (c *Client) sendWeatherToServer() error {
 
 			select {
 			case <-sigtermNotifier:
-				log.Debugf("action: terminate_client | result: success | client_id: %v", c.config.ID)
+				log.Debugf("action: terminate_client | result: success ")
 				return ErrClientTerminated
 			default:
 			}
@@ -193,7 +188,7 @@ func (c *Client) sendTripsToServer() error {
 	}
 
 	for _, city := range cities {
-		file, err := os.Open(fmt.Sprintf("data/%s/trips-small.csv", city))
+		file, err := os.Open(fmt.Sprintf("data/%s/%s", city, c.config.TripsFile))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -229,7 +224,7 @@ func (c *Client) sendTripsToServer() error {
 
 			select {
 			case <-sigtermNotifier:
-				log.Debugf("action: terminate_client | result: success | client_id: %v", c.config.ID)
+				log.Debugf("action: terminate_client | result: success")
 				return ErrClientTerminated
 			default:
 			}
@@ -263,12 +258,12 @@ func (c *Client) getResults() error {
 		return err
 	}
 	fmt.Println(result2)
-	//
-	//result3, err := c.getResult()
-	//if err != nil {
-	//	return err
-	//}
-	//fmt.Println(result3)
+
+	result3, err := c.getResult()
+	if err != nil {
+		return err
+	}
+	fmt.Println(result3)
 	return nil
 }
 

@@ -99,7 +99,7 @@ func (s *ClientHandler) handleStations(conn net.Conn, city string) {
 		}
 
 		station := city + "," + strings.TrimSpace(msg.Payload)
-		s.stationsProducer.PublishMessage(station)
+		s.stationsProducer.PublishMessage(station, "")
 	}
 }
 
@@ -129,7 +129,7 @@ func (s *ClientHandler) handleWeather(conn net.Conn, city string) {
 		}
 
 		weather := city + "," + strings.TrimSpace(msg.Payload)
-		s.weatherProducer.PublishMessage(weather)
+		s.weatherProducer.PublishMessage(weather, "")
 	}
 }
 
@@ -157,7 +157,7 @@ func (s *ClientHandler) handleTrips(conn net.Conn, city string) {
 		for _, line := range lines {
 			id := strconv.Itoa(tripCounter)
 			trip := id + "," + city + "," + strings.TrimSpace(line)
-			s.tripsProducer.PublishMessage(trip)
+			s.tripsProducer.PublishMessage(trip, "")
 			if tripCounter%10000 == 0 {
 				fmt.Printf("Time: %s Received message %s\n", time.Since(startTime).String(), id)
 			}
@@ -167,14 +167,14 @@ func (s *ClientHandler) handleTrips(conn net.Conn, city string) {
 }
 
 func (s *ClientHandler) handleEndStaticData(conn net.Conn) {
-	s.stationsProducer.PublishMessage("eof")
-	s.weatherProducer.PublishMessage("eof")
+	s.stationsProducer.PublishMessage("eof", "")
+	s.weatherProducer.PublishMessage("eof", "")
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 }
 
 func (s *ClientHandler) handleResults(conn net.Conn) {
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
-	s.tripsProducer.PublishMessage("eof")
+	s.tripsProducer.PublishMessage("eof", "")
 	s.resultsConsumer.Consume(func(msg string) {
 		protocol.Send(conn, protocol.NewDataMessage(msg))
 	})

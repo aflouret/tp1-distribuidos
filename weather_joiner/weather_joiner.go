@@ -67,14 +67,14 @@ func (j *WeatherJoiner) processWeatherMessage(msg string) {
 
 func (j *WeatherJoiner) processTripMessage(msg string) {
 	if msg == "eof" {
-		j.producer.PublishMessage(msg)
+		j.producer.PublishMessage(msg, "")
 		return
 	}
 	joinedTrip, err := j.joinWeather(msg)
 	if err != nil {
 		//fmt.Println("ERROR " + err.Error())
 	} else {
-		j.producer.PublishMessage(joinedTrip)
+		j.producer.PublishMessage(joinedTrip, "")
 	}
 	//fmt.Println(msg)
 	if j.msgCount%10000 == 0 {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 	"tp1/common/middleware"
 )
@@ -33,10 +32,10 @@ func (f *YearFilter) Run() {
 
 func (f *YearFilter) processMessage(msg string) {
 	if msg == "eof" {
-		f.producer.PublishMessage(msg)
+		f.producer.PublishMessage(msg, "")
 		return
 	}
-	fmt.Println("Received message " + msg)
+	//fmt.Println("Received message " + msg)
 
 	f.filterAndSend(msg)
 }
@@ -48,7 +47,7 @@ func (f *YearFilter) filterAndSend(msg string) error {
 		startStationName := fields[startStationNameIndex]
 		id := fields[idIndex]
 		messageToSend := id + "," + startStationName
-		f.producer.PublishMessage(messageToSend)
+		f.producer.PublishMessage(messageToSend, year)
 		//fmt.Printf("Sent message %s,%s\n", id, startStationName)
 	}
 	return nil

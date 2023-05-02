@@ -48,8 +48,8 @@ func (d *DataDropper) Run() {
 
 func (d *DataDropper) processMessage(msg string) {
 	if msg == "eof" {
-		d.stationsJoinerProducer.PublishMessage(msg)
-		d.weatherJoinerProducer.PublishMessage(msg)
+		d.stationsJoinerProducer.PublishMessage(msg, "")
+		d.weatherJoinerProducer.PublishMessage(msg, "")
 		return
 	}
 	fields := strings.Split(msg, ",")
@@ -79,7 +79,7 @@ func (d *DataDropper) sendToWeatherJoiner(fields []string) {
 		fieldsToSend = append(fieldsToSend, fields[col])
 	}
 	trip := strings.Join(fieldsToSend, ",")
-	d.weatherJoinerProducer.PublishMessage(trip)
+	d.weatherJoinerProducer.PublishMessage(trip, "")
 	//log.Printf("Sent trip to weather joiner: %s\n", trip)
 }
 
@@ -90,6 +90,6 @@ func (d *DataDropper) sendToStationsJoiner(fields []string) {
 	}
 	trip := strings.Join(fieldsToSend, ",")
 
-	d.stationsJoinerProducer.PublishMessage(trip)
+	d.stationsJoinerProducer.PublishMessage(trip, "")
 	//log.Printf("Sent trip to stations joiner: %s\n", trip)
 }

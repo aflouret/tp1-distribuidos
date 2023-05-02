@@ -16,8 +16,8 @@ func main() {
 	if err != nil {
 		previousStageInstances = 1
 	}
-	consumer := middleware.NewConsumer("count_merger", "", 2*previousStageInstances, instanceID)
+	consumer := middleware.NewConsumer("distance_merger", "", previousStageInstances, instanceID)
 	producer := middleware.NewProducer("results", 1, false)
-	countMerger := NewCountMerger(consumer, producer)
-	countMerger.Run()
+	distanceMerger := NewDistanceMerger(consumer, producer)
+	distanceMerger.Run()
 }

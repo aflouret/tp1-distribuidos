@@ -39,7 +39,7 @@ func (f *PrecipitationFilter) Run() {
 
 func (f *PrecipitationFilter) processMessage(msg string) {
 	if msg == "eof" {
-		f.producer.PublishMessage(msg)
+		f.producer.PublishMessage(msg, "")
 		return
 	}
 	//fmt.Println("Received message " + msg)
@@ -63,7 +63,7 @@ func (f *PrecipitationFilter) filterAndSend(msg string) error {
 		startDate := fields[startDateIndex]
 		duration := fields[durationIndex]
 		msgToSend := fmt.Sprintf("%s,%s,%s", id, startDate, duration)
-		f.producer.PublishMessage(msgToSend)
+		f.producer.PublishMessage(msgToSend, "")
 		//fmt.Printf("Sent message %s\n", msgToSend)
 	}
 	return nil

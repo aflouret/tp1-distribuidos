@@ -43,8 +43,7 @@ func NewProducer(exchangeName string, consumerCount int, routeByID bool) *Produc
 	}
 }
 
-func (p *Producer) PublishMessage(msg string) {
-	routingKey := ""
+func (p *Producer) PublishMessage(msg string, routingKey string) {
 	if msg == "eof" {
 		routingKey = "eof"
 	} else if p.routeByID {

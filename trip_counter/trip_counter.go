@@ -18,14 +18,14 @@ type TripCounter struct {
 	year           string
 }
 
-func NewTripCounter(consumer *middleware.Consumer, producer *middleware.Producer) *TripCounter {
+func NewTripCounter(year string, consumer *middleware.Consumer, producer *middleware.Producer) *TripCounter {
 	countByStation := make(map[string]int)
 
 	return &TripCounter{
 		producer:       producer,
 		consumer:       consumer,
 		countByStation: countByStation,
-		year:           "2016",
+		year:           year,
 	}
 }
 
@@ -35,16 +35,13 @@ func (a *TripCounter) Run() {
 
 	a.consumer.Consume(a.processMessage)
 	a.sendResults()
-	for k, v := range a.countByStation {
-		fmt.Printf("%s,%v\n", k, v)
-	}
 }
 
 func (a *TripCounter) processMessage(msg string) {
 	if msg == "eof" {
 		return
 	}
-	fmt.Println("Received message " + msg)
+	//fmt.Println("Received message " + msg)
 
 	a.updateCount(msg)
 }
@@ -63,8 +60,8 @@ func (a *TripCounter) updateCount(msg string) error {
 func (a *TripCounter) sendResults() {
 	for k, v := range a.countByStation {
 		result := fmt.Sprintf("%s,%s,%v", a.year, k, v)
-		a.producer.PublishMessage(result)
-		fmt.Println(result)
+		a.producer.PublishMessage(result, "")
+		//fmt.Println(result)
 	}
-	a.producer.PublishMessage("eof")
+	a.producer.PublishMessage("eof", "")
 }

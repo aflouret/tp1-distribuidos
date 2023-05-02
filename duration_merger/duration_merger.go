@@ -82,6 +82,6 @@ func (m *DurationMerger) sendResults() {
 	for k, v := range m.avgDurationsByDate {
 		result += fmt.Sprintf("%s,%v\n", k, v.avg)
 	}
-	m.producer.PublishMessage(result)
+	m.producer.PublishMessage(result, "")
 	fmt.Println(result)
 }

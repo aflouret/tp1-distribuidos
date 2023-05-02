@@ -28,6 +28,7 @@ func InitConfig() (*viper.Viper, error) {
 	v.BindEnv("id")
 	v.BindEnv("server", "address")
 	v.BindEnv("log", "level")
+	v.BindEnv("trips", "filename")
 
 	// Try to read configuration from config file. If config file
 	// does not exists then ReadInConfig will fail but configuration
@@ -66,6 +67,7 @@ func PrintConfig(v *viper.Viper) {
 		v.GetString("id"),
 		v.GetString("server.address"),
 		v.GetString("log.level"),
+		v.Get("trips.filename"),
 	)
 }
 
@@ -84,10 +86,7 @@ func main() {
 
 	clientConfig := client.Config{
 		ServerAddress: v.GetString("server.address"),
-		ID:            v.GetString("id"),
-		LoopLapse:     v.GetDuration("loop.lapse"),
-		LoopPeriod:    v.GetDuration("loop.period"),
-		BatchSize:     v.GetInt("batch.size"),
+		TripsFile:     v.GetString("trips.filename"),
 	}
 
 	client := client.NewClient(clientConfig)

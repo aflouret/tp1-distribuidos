@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 	"strconv"
 	"tp1/common/middleware"
@@ -12,6 +11,7 @@ func main() {
 	if instanceID == "" {
 		instanceID = "0"
 	}
+
 	previousStageInstances, err := strconv.Atoi(os.Getenv("PREV_STAGE_INSTANCES"))
 	if err != nil {
 		previousStageInstances = 1
@@ -20,14 +20,9 @@ func main() {
 	if err != nil {
 		nextStageInstances = 1
 	}
-	year := os.Getenv("YEAR")
-	if year == "" {
-		log.Fatal("Year not defined")
-	}
+	consumer := middleware.NewConsumer("distance_averager", "", previousStageInstances, instanceID)
+	producer := middleware.NewProducer("distance_merger", nextStageInstances, false)
 
-	consumer := middleware.NewConsumer("trip_counter", year, previousStageInstances, instanceID)
-	producer := middleware.NewProducer("count_merger", nextStageInstances, false)
-
-	tripCounter := NewTripCounter(year, consumer, producer)
-	tripCounter.Run()
+	distanceAverager := NewDistanceAverager(consumer, producer)
+	distanceAverager.Run()
 }

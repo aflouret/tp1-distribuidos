@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	idIndex = iota
-	yearIndex
+	yearIndex = iota
 	startStationNameIndex
 	countIndex
 )
@@ -84,12 +83,13 @@ func (m *CountMerger) sendResults() {
 	result += fmt.Sprintf("start_station_name,trips_count_%s,trips_count_%s\n", m.year2, m.year1)
 
 	for k, countYear2 := range m.countByStationYear2 {
-		countYear1 := m.countByStationYear1[k]
-		if countYear2 >= countYear1 {
-			result += fmt.Sprintf("%s,%v,%v\n", k, countYear2, countYear1)
+		if countYear1, ok := m.countByStationYear1[k]; ok {
+			if countYear2 > 2*countYear1 {
+				result += fmt.Sprintf("%s,%v,%v\n", k, countYear2, countYear1)
+			}
 		}
 	}
 
-	m.producer.PublishMessage(result)
+	m.producer.PublishMessage(result, "")
 	fmt.Println(result)
 }
