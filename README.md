@@ -41,26 +41,5 @@ Luego, ejecutar el siguiente comando para levantar los containers e iniciar el s
 docker compose up --build
 ```
 
-# 4+1 Views
-
-## Scope
-
-## Escenarios
-
-## Vista lógica
-
-### DAG
-![DAG](/docs/DAG.png)
-
-## Vista de procesos
-
-## Vista de desarrollo
-
-## Vista física
-### Diagrama de robustez
-![Diagrama de robustez](/docs/Robustez.png)
-
-### Diagrama de despliegue
-![Diagrama de despliegue](/docs/Despliegue.png)
 
 
