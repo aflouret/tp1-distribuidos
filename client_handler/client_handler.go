@@ -157,7 +157,7 @@ func (s *ClientHandler) handleTrips(conn net.Conn, city string) (shouldExit bool
 	protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 
 	startTime := time.Now()
-	tripCounter := 0
+	batchCounter := 0
 	for {
 		select {
 		case <-s.sigtermNotifier:
@@ -180,16 +180,13 @@ func (s *ClientHandler) handleTrips(conn net.Conn, city string) (shouldExit bool
 			return
 		}
 		protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
-		lines := strings.Split(msg.Payload, ";")
-		for _, line := range lines {
-			id := strconv.Itoa(tripCounter)
-			trip := id + "," + city + "," + strings.TrimSpace(line)
-			s.tripsProducer.PublishMessage(trip, "")
-			if tripCounter%10000 == 0 {
-				fmt.Printf("Time: %s Received message %s\n", time.Since(startTime).String(), id)
-			}
-			tripCounter++
+		id := strconv.Itoa(batchCounter)
+		batch := id + "," + city + "\n" + msg.Payload
+		s.tripsProducer.PublishMessage(batch, "")
+		if batchCounter%200 == 0 {
+			fmt.Printf("Time: %s Received batch %s\n", time.Since(startTime).String(), id)
 		}
+		batchCounter++
 	}
 }
 

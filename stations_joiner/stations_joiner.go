@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 	"tp1/common/middleware"
+	"tp1/common/utils"
 )
 
 const (
-	idIndex = iota
-	tripCityIndex
-	tripStartStationCodeIndex
+	tripStartStationCodeIndex = iota
 	tripEndStationCodeIndex
 	tripYearIdIndex
 )
@@ -26,6 +26,8 @@ type StationsJoiner struct {
 	tripsConsumer              *middleware.Consumer
 	stationsConsumer           *middleware.Consumer
 	stations                   map[string]station
+	msgCount                   int
+	startTime                  time.Time
 }
 
 func NewStationsJoiner(
@@ -41,6 +43,7 @@ func NewStationsJoiner(
 		yearFilterProducer:         yearFilterProducer,
 		distanceCalculatorProducer: distanceCalculatorProducer,
 		stations:                   stations,
+		startTime:                  time.Now(),
 	}
 }
 
@@ -74,77 +77,88 @@ func (j *StationsJoiner) processStationMessage(msg string) {
 }
 
 func (j *StationsJoiner) processTripMessage(msg string) {
-	//log.Printf("Received trip: %s\n", msg)
 	if msg == "eof" {
 		j.yearFilterProducer.PublishMessage(msg, "")
 		j.distanceCalculatorProducer.PublishMessage(msg, "")
 		return
 	}
-	joinedTrip, err := j.joinStation(msg)
-	if err != nil {
-		fmt.Printf("Error joining station %s: %s\n", msg, err.Error())
-		return
+	id, city, trips := utils.ParseBatch(msg)
+	joinedTrips := j.joinStations(city, trips)
+
+	if len(joinedTrips) > 0 {
+		if j.msgCount%2000 == 0 {
+			fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(j.startTime).String(), j.msgCount, msg)
+		}
+
+		yearFilterTrips := j.dropDataForYearFilter(joinedTrips)
+		yearFilterBatch := utils.CreateBatch(id, "", yearFilterTrips)
+		j.yearFilterProducer.PublishMessage(yearFilterBatch, "")
+
+		if j.msgCount%2000 == 0 {
+			fmt.Printf("Time: %s Sent to year filter: %v\n", time.Since(j.startTime).String(), yearFilterBatch)
+		}
+
+		if city == "montreal" {
+			distanceCalculatorBatch := utils.CreateBatch(id, "", joinedTrips)
+			j.distanceCalculatorProducer.PublishMessage(distanceCalculatorBatch, "")
+			if j.msgCount%2000 == 0 {
+				fmt.Printf("Time: %s Sent to distance calculator: %v\n", time.Since(j.startTime).String(), distanceCalculatorBatch)
+			}
+		}
 	}
-	j.sendToYearFilter(joinedTrip)
-	j.sendToDistanceCalculator(joinedTrip)
-	//log.Printf("joined trip: %s\n", joinedTrip)
+	j.msgCount++
 }
 
 func getStationKey(code, year, city string) string {
 	return fmt.Sprintf("%s-%s-%s", code, year, city)
 }
 
-func (j *StationsJoiner) joinStation(csvTrip string) (string, error) {
+func (j *StationsJoiner) joinStations(city string, trips []string) []string {
+	joinedTrips := make([]string, 0, len(trips))
+	for _, trip := range trips {
+		tripFields := strings.Split(trip, ",")
 
-	tripFields := strings.Split(csvTrip, ",")
+		startStationCode := tripFields[tripStartStationCodeIndex]
+		endStationCode := tripFields[tripEndStationCodeIndex]
+		year := tripFields[tripYearIdIndex]
 
-	id := tripFields[idIndex]
-	city := tripFields[tripCityIndex]
-	startStationCode := tripFields[tripStartStationCodeIndex]
-	endStationCode := tripFields[tripEndStationCodeIndex]
-	year := tripFields[tripYearIdIndex]
+		startStationKey := getStationKey(startStationCode, year, city)
+		startStation, ok := j.stations[startStationKey]
+		if !ok {
+			fmt.Println(fmt.Errorf("station not found: %s %s", city, startStationKey))
+			continue
+		}
+		endStationKey := getStationKey(endStationCode, year, city)
+		endStation, ok := j.stations[endStationKey]
+		if !ok {
+			fmt.Println(fmt.Errorf("station not found: %s %s", city, startStationKey))
+			continue
+		}
 
-	startStationKey := getStationKey(startStationCode, year, city)
-	startStation, ok := j.stations[startStationKey]
-	if !ok {
-		return "", fmt.Errorf("station not found: %s", startStationKey)
+		joinedTrip := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s",
+			startStation.name,
+			startStation.latitude,
+			startStation.longitude,
+			endStation.name,
+			endStation.latitude,
+			endStation.longitude,
+			year,
+		)
+		joinedTrips = append(joinedTrips, joinedTrip)
 	}
-	endStationKey := getStationKey(endStationCode, year, city)
-	endStation, ok := j.stations[endStationKey]
-	if !ok {
-		return "", fmt.Errorf("station not found: %s", endStationKey)
-	}
-
-	joinedTrip := fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s",
-		id,
-		city,
-		startStation.name,
-		startStation.latitude,
-		startStation.longitude,
-		endStation.name,
-		endStation.latitude,
-		endStation.longitude,
-		year,
-	)
-
-	return joinedTrip, nil
+	return joinedTrips
 }
 
-func (j *StationsJoiner) sendToYearFilter(trip string) {
-	fields := strings.Split(trip, ",")
+func (j *StationsJoiner) dropDataForYearFilter(trips []string) []string {
+	tripsToSend := make([]string, 0, len(trips))
+	for _, trip := range trips {
+		fields := strings.Split(trip, ",")
 
-	id := fields[0]
-	startStationName := fields[2]
-	year := fields[8]
+		startStationName := fields[0]
+		year := fields[6]
 
-	tripToSend := fmt.Sprintf("%s,%s,%s", id, startStationName, year)
-	j.yearFilterProducer.PublishMessage(tripToSend, "")
-}
-
-func (j *StationsJoiner) sendToDistanceCalculator(trip string) {
-	fields := strings.Split(trip, ",")
-	city := fields[1]
-	if city == "montreal" {
-		j.distanceCalculatorProducer.PublishMessage(trip, "")
+		tripToSend := fmt.Sprintf("%s,%s", startStationName, year)
+		tripsToSend = append(tripsToSend, tripToSend)
 	}
+	return tripsToSend
 }

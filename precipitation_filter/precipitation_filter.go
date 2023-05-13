@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 	"tp1/common/middleware"
+	"tp1/common/utils"
 )
 
 const (
-	idIndex = iota
-	startDateIndex
+	startDateIndex = iota
 	durationIndex
 	precipitationsIndex
 )
@@ -44,29 +44,41 @@ func (f *PrecipitationFilter) processMessage(msg string) {
 		f.producer.PublishMessage(msg, "")
 		return
 	}
-	//fmt.Println("Received message " + msg)
 
-	if f.msgCount%10000 == 0 {
-		fmt.Printf("Time: %s Received message %s\n", time.Since(f.startTime).String(), msg)
+	id, _, trips := utils.ParseBatch(msg)
+
+	filteredTrips := f.filter(trips)
+
+	if len(filteredTrips) > 0 {
+		filteredTripsBatch := utils.CreateBatch(id, "", filteredTrips)
+		f.producer.PublishMessage(filteredTripsBatch, "")
+
+		if f.msgCount%2000 == 0 {
+			fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(f.startTime).String(), f.msgCount, msg)
+			fmt.Printf("Time: %s Sent to duration averager: %v\n", time.Since(f.startTime).String(), filteredTripsBatch)
+		}
 	}
+
 	f.msgCount++
-	f.filterAndSend(msg)
+
 }
 
-func (f *PrecipitationFilter) filterAndSend(msg string) error {
-	fields := strings.Split(msg, ",")
-	precipitationsString := fields[precipitationsIndex]
-	precipitations, err := strconv.ParseFloat(precipitationsString, 64)
-	if err != nil {
-		return err
+func (f *PrecipitationFilter) filter(trips []string) []string {
+	filteredTrips := make([]string, 0, len(trips))
+	for _, trip := range trips {
+		fields := strings.Split(trip, ",")
+		precipitationsString := fields[precipitationsIndex]
+		precipitations, err := strconv.ParseFloat(precipitationsString, 64)
+		if err != nil {
+			fmt.Println(fmt.Errorf("error parsing precipitations: %w", err))
+			continue
+		}
+		if precipitations > f.minimumPrecipitations {
+			startDate := fields[startDateIndex]
+			duration := fields[durationIndex]
+			filteredTrip := fmt.Sprintf("%s,%s", startDate, duration)
+			filteredTrips = append(filteredTrips, filteredTrip)
+		}
 	}
-	if precipitations > f.minimumPrecipitations {
-		id := fields[idIndex]
-		startDate := fields[startDateIndex]
-		duration := fields[durationIndex]
-		msgToSend := fmt.Sprintf("%s,%s,%s", id, startDate, duration)
-		f.producer.PublishMessage(msgToSend, "")
-		//fmt.Printf("Sent message %s\n", msgToSend)
-	}
-	return nil
+	return filteredTrips
 }

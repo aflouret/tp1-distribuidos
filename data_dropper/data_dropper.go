@@ -6,20 +6,19 @@ import (
 	"strings"
 	"time"
 	"tp1/common/middleware"
+	"tp1/common/utils"
 )
 
 const (
-	idIndex               = 0
-	cityIndex             = 1
-	startDateIndex        = 2
-	startStationCodeIndex = 3
-	endStationCodeIndex   = 5
-	durationSecIndex      = 6
-	yearIdIndex           = 8
+	startDateIndex        = 0
+	startStationCodeIndex = 1
+	endStationCodeIndex   = 3
+	durationSecIndex      = 4
+	yearIdIndex           = 6
 )
 
-var columnsForWeatherJoiner = []int{idIndex, cityIndex, startDateIndex, durationSecIndex}
-var columnsForStationsJoiner = []int{idIndex, cityIndex, startStationCodeIndex, endStationCodeIndex, yearIdIndex}
+var columnsForWeatherJoiner = []int{startDateIndex, durationSecIndex}
+var columnsForStationsJoiner = []int{startStationCodeIndex, endStationCodeIndex, yearIdIndex}
 
 type DataDropper struct {
 	stationsJoinerProducer *middleware.Producer
@@ -52,44 +51,64 @@ func (d *DataDropper) processMessage(msg string) {
 		d.weatherJoinerProducer.PublishMessage(msg, "")
 		return
 	}
-	fields := strings.Split(msg, ",")
-	d.sanitize(fields)
-	d.sendToWeatherJoiner(fields)
-	d.sendToStationsJoiner(fields)
-	//fmt.Println(msg)
-	if d.msgCount%10000 == 0 {
-		fmt.Printf("Time: %s Received message %s\n", time.Since(d.startTime).String(), msg)
+
+	id, city, trips := utils.ParseBatch(msg)
+	sanitizedTrips := d.sanitize(trips)
+
+	weatherJoinerTrips := d.dropDataForWeatherJoiner(sanitizedTrips)
+	weatherJoinerBatch := utils.CreateBatch(id, city, weatherJoinerTrips)
+	d.weatherJoinerProducer.PublishMessage(weatherJoinerBatch, "")
+
+	stationsJoinerTrips := d.dropDataForStationsJoiner(sanitizedTrips)
+	stationsJoinerBatch := utils.CreateBatch(id, city, stationsJoinerTrips)
+	d.stationsJoinerProducer.PublishMessage(stationsJoinerBatch, "")
+
+	if d.msgCount%2000 == 0 {
+		fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(d.startTime).String(), d.msgCount, msg)
+		fmt.Printf("Time: %s Sent to weather joiner: %v\n", time.Since(d.startTime).String(), weatherJoinerBatch)
+		fmt.Printf("Time: %s Sent to stations joiner: %v\n", time.Since(d.startTime).String(), stationsJoinerBatch)
 	}
 	d.msgCount++
 }
 
-func (d *DataDropper) sanitize(fields []string) {
-	duration, err := strconv.ParseFloat(fields[durationSecIndex], 64)
-	if err != nil || duration < 0 {
-		fields[durationSecIndex] = "0"
-	}
+func (d *DataDropper) sanitize(trips []string) []string {
+	sanitizedTrips := make([]string, 0, len(trips))
+	for i := range trips {
+		fields := strings.Split(trips[i], ",")
+		duration, err := strconv.ParseFloat(fields[durationSecIndex], 64)
+		if err != nil || duration < 0 {
+			fields[durationSecIndex] = "0"
+		}
 
-	day := strings.Split(fields[startDateIndex], " ")[0]
-	fields[startDateIndex] = day
+		day := strings.Split(fields[startDateIndex], " ")[0]
+		fields[startDateIndex] = day
+		sanitizedTrips = append(sanitizedTrips, strings.Join(fields, ","))
+	}
+	return sanitizedTrips
 }
 
-func (d *DataDropper) sendToWeatherJoiner(fields []string) {
-	var fieldsToSend []string
-	for _, col := range columnsForWeatherJoiner {
-		fieldsToSend = append(fieldsToSend, fields[col])
+func (d *DataDropper) dropDataForWeatherJoiner(trips []string) []string {
+	tripsToSend := make([]string, 0, len(trips))
+	for i := range trips {
+		fields := strings.Split(trips[i], ",")
+		var fieldsToSend []string
+		for _, col := range columnsForWeatherJoiner {
+			fieldsToSend = append(fieldsToSend, fields[col])
+		}
+		tripsToSend = append(tripsToSend, strings.Join(fieldsToSend, ","))
 	}
-	trip := strings.Join(fieldsToSend, ",")
-	d.weatherJoinerProducer.PublishMessage(trip, "")
-	//log.Printf("Sent trip to weather joiner: %s\n", trip)
+	return tripsToSend
 }
 
-func (d *DataDropper) sendToStationsJoiner(fields []string) {
-	var fieldsToSend []string
-	for _, col := range columnsForStationsJoiner {
-		fieldsToSend = append(fieldsToSend, fields[col])
+func (d *DataDropper) dropDataForStationsJoiner(trips []string) []string {
+	tripsToSend := make([]string, 0, len(trips))
+	for i := range trips {
+		fields := strings.Split(trips[i], ",")
+		var fieldsToSend []string
+		for _, col := range columnsForStationsJoiner {
+			fieldsToSend = append(fieldsToSend, fields[col])
+		}
+		tripsToSend = append(tripsToSend, strings.Join(fieldsToSend, ","))
 	}
-	trip := strings.Join(fieldsToSend, ",")
-
-	d.stationsJoinerProducer.PublishMessage(trip, "")
-	//log.Printf("Sent trip to stations joiner: %s\n", trip)
+	return tripsToSend
 }

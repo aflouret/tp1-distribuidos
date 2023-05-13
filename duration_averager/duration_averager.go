@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 	"tp1/common/middleware"
+	"tp1/common/utils"
 )
 
 const (
-	idIndex = iota
-	startDateIndex
+	startDateIndex = iota
 	durationIndex
 )
 
@@ -53,31 +53,36 @@ func (a *DurationAverager) processMessage(msg string) {
 	if msg == "eof" {
 		return
 	}
-	//fmt.Println(msg)
-	if a.msgCount%100 == 0 {
-		fmt.Printf("Time: %s Received message %s\n", time.Since(a.startTime).String(), msg)
+
+	_, _, trips := utils.ParseBatch(msg)
+
+	a.updateAverage(trips)
+
+	if a.msgCount%2000 == 0 {
+		fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(a.startTime).String(), a.msgCount, msg)
 	}
 	a.msgCount++
-	a.updateAverage(msg)
 }
 
-func (a *DurationAverager) updateAverage(msg string) error {
-	fields := strings.Split(msg, ",")
-	startDate := fields[startDateIndex]
-	duration, err := strconv.ParseFloat(fields[durationIndex], 64)
-	if err != nil {
-		return err
-	}
+func (a *DurationAverager) updateAverage(trips []string) {
+	for _, trip := range trips {
+		fields := strings.Split(trip, ",")
+		startDate := fields[startDateIndex]
+		duration, err := strconv.ParseFloat(fields[durationIndex], 64)
+		if err != nil {
+			fmt.Println(fmt.Errorf("error parsing duration: %w", err))
+			continue
+		}
 
-	if d, ok := a.avgDurationsByDate[startDate]; ok {
-		newAvg := (d.avg*float64(d.count) + duration) / float64(d.count+1)
-		d.avg = newAvg
-		d.count++
-		a.avgDurationsByDate[startDate] = d
-	} else {
-		a.avgDurationsByDate[startDate] = average{avg: duration, count: 1}
+		if d, ok := a.avgDurationsByDate[startDate]; ok {
+			newAvg := (d.avg*float64(d.count) + duration) / float64(d.count+1)
+			d.avg = newAvg
+			d.count++
+			a.avgDurationsByDate[startDate] = d
+		} else {
+			a.avgDurationsByDate[startDate] = average{avg: duration, count: 1}
+		}
 	}
-	return nil
 }
 
 func (a *DurationAverager) sendResults() {

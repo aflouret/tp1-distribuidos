@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 	"tp1/common/middleware"
+	"tp1/common/utils"
 )
 
 const (
-	idIndex = iota
-	startStationNameIndex
+	startStationNameIndex = iota
 )
 
 type TripCounter struct {
@@ -16,6 +17,8 @@ type TripCounter struct {
 	consumer       *middleware.Consumer
 	countByStation map[string]int
 	year           string
+	msgCount       int
+	startTime      time.Time
 }
 
 func NewTripCounter(year string, consumer *middleware.Consumer, producer *middleware.Producer) *TripCounter {
@@ -32,6 +35,7 @@ func NewTripCounter(year string, consumer *middleware.Consumer, producer *middle
 func (a *TripCounter) Run() {
 	defer a.consumer.Close()
 	defer a.producer.Close()
+	a.startTime = time.Now()
 
 	a.consumer.Consume(a.processMessage)
 	a.sendResults()
@@ -41,27 +45,33 @@ func (a *TripCounter) processMessage(msg string) {
 	if msg == "eof" {
 		return
 	}
-	//fmt.Println("Received message " + msg)
 
-	a.updateCount(msg)
+	_, _, trips := utils.ParseBatch(msg)
+
+	a.updateCount(trips)
+
+	if a.msgCount%2000 == 0 {
+		fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(a.startTime).String(), a.msgCount, msg)
+	}
+	a.msgCount++
 }
 
-func (a *TripCounter) updateCount(msg string) error {
-	fields := strings.Split(msg, ",")
-	startStationName := fields[startStationNameIndex]
-	if c, ok := a.countByStation[startStationName]; ok {
-		a.countByStation[startStationName] = c + 1
-	} else {
-		a.countByStation[startStationName] = 1
+func (a *TripCounter) updateCount(trips []string) {
+	for _, trip := range trips {
+		fields := strings.Split(trip, ",")
+		startStationName := fields[startStationNameIndex]
+		if c, ok := a.countByStation[startStationName]; ok {
+			a.countByStation[startStationName] = c + 1
+		} else {
+			a.countByStation[startStationName] = 1
+		}
 	}
-	return nil
 }
 
 func (a *TripCounter) sendResults() {
 	for k, v := range a.countByStation {
 		result := fmt.Sprintf("%s,%s,%v", a.year, k, v)
 		a.producer.PublishMessage(result, "")
-		//fmt.Println(result)
 	}
 	a.producer.PublishMessage("eof", "")
 }

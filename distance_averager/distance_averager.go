@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 	"tp1/common/middleware"
+	"tp1/common/utils"
 )
 
 const (
-	idIndex = iota
-	endStationNameIndex
+	endStationNameIndex = iota
 	distanceIndex
 )
 
@@ -50,31 +50,36 @@ func (a *DistanceAverager) processMessage(msg string) {
 	if msg == "eof" {
 		return
 	}
-	//fmt.Println(msg)
-	if a.msgCount%10000 == 0 {
-		fmt.Printf("Time: %s Received message %s\n", time.Since(a.startTime).String(), msg)
+
+	_, _, trips := utils.ParseBatch(msg)
+
+	a.updateAverage(trips)
+
+	if a.msgCount%2000 == 0 {
+		fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(a.startTime).String(), a.msgCount, msg)
 	}
 	a.msgCount++
-	a.updateAverage(msg)
 }
 
-func (a *DistanceAverager) updateAverage(msg string) error {
-	fields := strings.Split(msg, ",")
-	endStationName := fields[endStationNameIndex]
-	distance, err := strconv.ParseFloat(fields[distanceIndex], 64)
-	if err != nil {
-		return err
-	}
+func (a *DistanceAverager) updateAverage(trips []string) {
+	for _, trip := range trips {
+		fields := strings.Split(trip, ",")
+		endStationName := fields[endStationNameIndex]
+		distance, err := strconv.ParseFloat(fields[distanceIndex], 64)
+		if err != nil {
+			fmt.Println(fmt.Errorf("error parsing distance: %w", err))
+			continue
+		}
 
-	if d, ok := a.avgDistancesByStation[endStationName]; ok {
-		newAvg := (d.avg*float64(d.count) + distance) / float64(d.count+1)
-		d.avg = newAvg
-		d.count++
-		a.avgDistancesByStation[endStationName] = d
-	} else {
-		a.avgDistancesByStation[endStationName] = average{avg: distance, count: 1}
+		if d, ok := a.avgDistancesByStation[endStationName]; ok {
+			newAvg := (d.avg*float64(d.count) + distance) / float64(d.count+1)
+			d.avg = newAvg
+			d.count++
+			a.avgDistancesByStation[endStationName] = d
+		} else {
+			a.avgDistancesByStation[endStationName] = average{avg: distance, count: 1}
+		}
 	}
-	return nil
 }
 
 func (a *DistanceAverager) sendResults() {

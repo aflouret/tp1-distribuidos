@@ -1,21 +1,25 @@
 package main
 
 import (
+	"fmt"
 	"strings"
+	"time"
 	"tp1/common/middleware"
+	"tp1/common/utils"
 )
 
 const (
-	idIndex = iota
-	startStationNameIndex
+	startStationNameIndex = iota
 	yearIndex
 )
 
 type YearFilter struct {
-	producer *middleware.Producer
-	consumer *middleware.Consumer
-	year1    string
-	year2    string
+	producer  *middleware.Producer
+	consumer  *middleware.Consumer
+	year1     string
+	year2     string
+	msgCount  int
+	startTime time.Time
 }
 
 func NewYearFilter(producer *middleware.Producer, consumer *middleware.Consumer, year1 string, year2 string) *YearFilter {
@@ -30,6 +34,7 @@ func NewYearFilter(producer *middleware.Producer, consumer *middleware.Consumer,
 func (f *YearFilter) Run() {
 	defer f.consumer.Close()
 	defer f.producer.Close()
+	f.startTime = time.Now()
 
 	f.consumer.Consume(f.processMessage)
 }
@@ -39,20 +44,51 @@ func (f *YearFilter) processMessage(msg string) {
 		f.producer.PublishMessage(msg, "")
 		return
 	}
-	//fmt.Println("Received message " + msg)
+	id, _, trips := utils.ParseBatch(msg)
 
-	f.filterAndSend(msg)
+	filteredTripsYear1, filteredTripsYear2 := f.filter(trips)
+
+	if f.msgCount%500 == 0 {
+		fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(f.startTime).String(), f.msgCount, msg)
+	}
+
+	if len(filteredTripsYear1) > 0 {
+		filteredTripsBatch := utils.CreateBatch(id, "", filteredTripsYear1)
+		f.producer.PublishMessage(filteredTripsBatch, f.year1)
+
+		if f.msgCount%500 == 0 {
+			fmt.Printf("Time: %s Sent to trip counter year 1: %v\n", time.Since(f.startTime).String(), filteredTripsBatch)
+		}
+	}
+
+	if len(filteredTripsYear2) > 0 {
+		filteredTripsBatch := utils.CreateBatch(id, "", filteredTripsYear2)
+		f.producer.PublishMessage(filteredTripsBatch, f.year2)
+
+		if f.msgCount%500 == 0 {
+			fmt.Printf("Time: %s Sent to trip counter year 2: %v\n", time.Since(f.startTime).String(), filteredTripsBatch)
+		}
+	}
+
+	f.msgCount++
 }
 
-func (f *YearFilter) filterAndSend(msg string) error {
-	fields := strings.Split(msg, ",")
-	year := fields[yearIndex]
-	if year == f.year1 || year == f.year2 {
-		startStationName := fields[startStationNameIndex]
-		id := fields[idIndex]
-		messageToSend := id + "," + startStationName
-		f.producer.PublishMessage(messageToSend, year)
-		//fmt.Printf("Sent message %s,%s\n", id, startStationName)
+func (f *YearFilter) filter(trips []string) ([]string, []string) {
+	filteredTripsYear1 := make([]string, 0, len(trips))
+	filteredTripsYear2 := make([]string, 0, len(trips))
+
+	for _, trip := range trips {
+		fields := strings.Split(trip, ",")
+		year := fields[yearIndex]
+		if year == f.year1 {
+			startStationName := fields[startStationNameIndex]
+			filteredTrip := startStationName
+			filteredTripsYear1 = append(filteredTripsYear1, filteredTrip)
+		} else if year == f.year2 {
+			startStationName := fields[startStationNameIndex]
+			filteredTrip := startStationName
+			filteredTripsYear2 = append(filteredTripsYear2, filteredTrip)
+		}
 	}
-	return nil
+	return filteredTripsYear1, filteredTripsYear2
 }

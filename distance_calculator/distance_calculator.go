@@ -5,13 +5,13 @@ import (
 	"github.com/umahmood/haversine"
 	"strconv"
 	"strings"
+	"time"
 	"tp1/common/middleware"
+	"tp1/common/utils"
 )
 
 const (
-	idIndex = iota
-	cityIndex
-	startStationNameIndex
+	startStationNameIndex = iota
 	startStationLatitudeIndex
 	startStationLongitudeIndex
 	endStationNameIndex
@@ -21,8 +21,10 @@ const (
 )
 
 type DistanceCalculator struct {
-	producer *middleware.Producer
-	consumer *middleware.Consumer
+	producer  *middleware.Producer
+	consumer  *middleware.Consumer
+	msgCount  int
+	startTime time.Time
 }
 
 func NewDistanceCalculator(producer *middleware.Producer, consumer *middleware.Consumer) *DistanceCalculator {
@@ -36,6 +38,7 @@ func (c *DistanceCalculator) Run() {
 	defer c.consumer.Close()
 	defer c.producer.Close()
 
+	c.startTime = time.Now()
 	c.consumer.Consume(c.processMessage)
 }
 
@@ -44,41 +47,58 @@ func (c *DistanceCalculator) processMessage(msg string) {
 		c.producer.PublishMessage(msg, "")
 		return
 	}
-	//fmt.Println("Received message " + msg)
 
-	tripWithDistance, err := c.calculateDistance(msg)
-	if err != nil {
-		fmt.Println(err)
-		return
+	id, _, trips := utils.ParseBatch(msg)
+
+	tripsWithDistance := c.calculateDistance(trips)
+
+	if len(tripsWithDistance) > 0 {
+		tripsWithDistanceBatch := utils.CreateBatch(id, "", tripsWithDistance)
+		c.producer.PublishMessage(tripsWithDistanceBatch, "")
+
+		if c.msgCount%2000 == 0 {
+			fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(c.startTime).String(), c.msgCount, msg)
+			fmt.Printf("Time: %s Sent to distance averager: %v\n", time.Since(c.startTime).String(), tripsWithDistanceBatch)
+		}
 	}
-	c.producer.PublishMessage(tripWithDistance, "")
+
+	c.msgCount++
+
 }
 
-func (c *DistanceCalculator) calculateDistance(msg string) (string, error) {
-	fields := strings.Split(msg, ",")
-	id := fields[idIndex]
-	endStationName := fields[endStationNameIndex]
+func (c *DistanceCalculator) calculateDistance(trips []string) []string {
+	tripsWithDistance := make([]string, 0, len(trips))
+	for _, trip := range trips {
+		fields := strings.Split(trip, ",")
+		endStationName := fields[endStationNameIndex]
 
-	startStationLatitude, err := strconv.ParseFloat(fields[startStationLatitudeIndex], 64)
-	if err != nil {
-		return "", fmt.Errorf("error parsing start station latitude: %w", err)
-	}
-	startStationLongitude, err := strconv.ParseFloat(fields[startStationLongitudeIndex], 64)
-	if err != nil {
-		return "", fmt.Errorf("error parsing start station longitude: %w", err)
-	}
-	endStationLatitude, err := strconv.ParseFloat(fields[endStationLatitudeIndex], 64)
-	if err != nil {
-		return "", fmt.Errorf("error parsing end station latitude: %w", err)
-	}
-	endStationLongitude, err := strconv.ParseFloat(fields[endStationLongitudeIndex], 64)
-	if err != nil {
-		return "", fmt.Errorf("error parsing end station longitude: %w", err)
-	}
+		startStationLatitude, err := strconv.ParseFloat(fields[startStationLatitudeIndex], 64)
+		if err != nil {
+			fmt.Println(fmt.Errorf("error parsing start station latitude: %w", err))
+			continue
+		}
+		startStationLongitude, err := strconv.ParseFloat(fields[startStationLongitudeIndex], 64)
+		if err != nil {
+			fmt.Println(fmt.Errorf("error parsing start station longitude: %w", err))
+			continue
+		}
+		endStationLatitude, err := strconv.ParseFloat(fields[endStationLatitudeIndex], 64)
+		if err != nil {
+			fmt.Println(fmt.Errorf("error parsing end station latitude: %w", err))
+			continue
+		}
+		endStationLongitude, err := strconv.ParseFloat(fields[endStationLongitudeIndex], 64)
+		if err != nil {
+			fmt.Println(fmt.Errorf("error parsing end station longitude: %w", err))
+			continue
+		}
 
-	startCoordinates := haversine.Coord{startStationLatitude, startStationLongitude}
-	endCoordinates := haversine.Coord{endStationLatitude, endStationLongitude}
-	_, distance := haversine.Distance(startCoordinates, endCoordinates)
+		startCoordinates := haversine.Coord{startStationLatitude, startStationLongitude}
+		endCoordinates := haversine.Coord{endStationLatitude, endStationLongitude}
+		_, distance := haversine.Distance(startCoordinates, endCoordinates)
 
-	return fmt.Sprintf("%s,%s,%v", id, endStationName, distance), nil
+		tripWithDistance := fmt.Sprintf("%s,%v", endStationName, distance)
+		tripsWithDistance = append(tripsWithDistance, tripWithDistance)
+	}
+	return tripsWithDistance
 }

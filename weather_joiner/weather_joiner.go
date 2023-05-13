@@ -5,12 +5,11 @@ import (
 	"strings"
 	"time"
 	"tp1/common/middleware"
+	"tp1/common/utils"
 )
 
 const (
-	idIndex = iota
-	tripCityIndex
-	tripStartDateIndex
+	tripStartDateIndex = iota
 	tripDurationIndex
 )
 
@@ -76,36 +75,38 @@ func (j *WeatherJoiner) processTripMessage(msg string) {
 		j.producer.PublishMessage(msg, "")
 		return
 	}
-	joinedTrip, err := j.joinWeather(msg)
-	if err != nil {
-		//fmt.Println("ERROR " + err.Error())
-	} else {
-		j.producer.PublishMessage(joinedTrip, "")
+	id, city, trips := utils.ParseBatch(msg)
+	joinedTrips := j.joinWeather(city, trips)
+	if len(joinedTrips) > 0 {
+		joinedTripsBatch := utils.CreateBatch(id, "", joinedTrips)
+		j.producer.PublishMessage(joinedTripsBatch, "")
+		if j.msgCount%2000 == 0 {
+			fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(j.startTime).String(), j.msgCount, msg)
+			fmt.Printf("Time: %s Sent to precipitations filter: %v\n", time.Since(j.startTime).String(), joinedTripsBatch)
+		}
 	}
-	//fmt.Println(msg)
-	if j.msgCount%10000 == 0 {
-		fmt.Printf("Time: %s Received message %s\n", time.Since(j.startTime).String(), msg)
-	}
+
 	j.msgCount++
 }
 
-func (j *WeatherJoiner) joinWeather(csvTrip string) (string, error) {
-	tripFields := strings.Split(csvTrip, ",")
-	id := tripFields[idIndex]
-	city := tripFields[tripCityIndex]
-	startDate := tripFields[tripStartDateIndex]
-	duration := tripFields[tripDurationIndex]
+func (j *WeatherJoiner) joinWeather(city string, trips []string) []string {
+	joinedTrips := make([]string, 0, len(trips))
+	for _, trip := range trips {
+		tripFields := strings.Split(trip, ",")
+		startDate := tripFields[tripStartDateIndex]
+		duration := tripFields[tripDurationIndex]
 
-	precipitations, ok := j.precipitationsByDateByCity[city][startDate]
-	if !ok {
-		return "", fmt.Errorf("weather not found: %s %s", city, startDate)
+		precipitations, ok := j.precipitationsByDateByCity[city][startDate]
+		if !ok {
+			fmt.Println(fmt.Errorf("weather not found: %s %s", city, startDate))
+			continue
+		}
+
+		joinedTrip := fmt.Sprintf("%s,%s,%s",
+			startDate,
+			duration,
+			precipitations)
+		joinedTrips = append(joinedTrips, joinedTrip)
 	}
-
-	joinedTrip := fmt.Sprintf("%s,%s,%s,%s",
-		id,
-		startDate,
-		duration,
-		precipitations)
-
-	return joinedTrip, nil
+	return joinedTrips
 }
