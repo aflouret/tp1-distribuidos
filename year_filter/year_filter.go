@@ -46,28 +46,20 @@ func (f *YearFilter) processMessage(msg string) {
 	}
 	id, _, trips := utils.ParseBatch(msg)
 
-	filteredTripsYear1, filteredTripsYear2 := f.filter(trips)
-
-	if f.msgCount%500 == 0 {
-		fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(f.startTime).String(), f.msgCount, msg)
+	if f.msgCount%20000 == 0 {
+		fmt.Printf("Time: %s Received batch %v\n", time.Since(f.startTime).String(), id)
 	}
+
+	filteredTripsYear1, filteredTripsYear2 := f.filter(trips)
 
 	if len(filteredTripsYear1) > 0 {
 		filteredTripsBatch := utils.CreateBatch(id, "", filteredTripsYear1)
 		f.producer.PublishMessage(filteredTripsBatch, f.year1)
-
-		if f.msgCount%500 == 0 {
-			fmt.Printf("Time: %s Sent to trip counter year 1: %v\n", time.Since(f.startTime).String(), filteredTripsBatch)
-		}
 	}
 
 	if len(filteredTripsYear2) > 0 {
 		filteredTripsBatch := utils.CreateBatch(id, "", filteredTripsYear2)
 		f.producer.PublishMessage(filteredTripsBatch, f.year2)
-
-		if f.msgCount%500 == 0 {
-			fmt.Printf("Time: %s Sent to trip counter year 2: %v\n", time.Since(f.startTime).String(), filteredTripsBatch)
-		}
 	}
 
 	f.msgCount++

@@ -50,8 +50,6 @@ func (m *DistanceMerger) processMessage(msg string) {
 		return
 	}
 
-	//fmt.Println("Received message " + msg)
-
 	m.mergeResults(msg)
 }
 
@@ -95,5 +93,4 @@ func (m *DistanceMerger) sendResults() {
 		}
 	}
 	m.producer.PublishMessage(result, "")
-	fmt.Println(result)
 }

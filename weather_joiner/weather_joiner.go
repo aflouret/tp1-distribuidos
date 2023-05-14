@@ -80,9 +80,8 @@ func (j *WeatherJoiner) processTripMessage(msg string) {
 	if len(joinedTrips) > 0 {
 		joinedTripsBatch := utils.CreateBatch(id, "", joinedTrips)
 		j.producer.PublishMessage(joinedTripsBatch, "")
-		if j.msgCount%2000 == 0 {
-			fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(j.startTime).String(), j.msgCount, msg)
-			fmt.Printf("Time: %s Sent to precipitations filter: %v\n", time.Since(j.startTime).String(), joinedTripsBatch)
+		if j.msgCount%20000 == 0 {
+			fmt.Printf("Time: %s Received batch %v\n", time.Since(j.startTime).String(), id)
 		}
 	}
 
@@ -98,7 +97,6 @@ func (j *WeatherJoiner) joinWeather(city string, trips []string) []string {
 
 		precipitations, ok := j.precipitationsByDateByCity[city][startDate]
 		if !ok {
-			fmt.Println(fmt.Errorf("weather not found: %s %s", city, startDate))
 			continue
 		}
 

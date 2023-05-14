@@ -86,24 +86,17 @@ func (j *StationsJoiner) processTripMessage(msg string) {
 	joinedTrips := j.joinStations(city, trips)
 
 	if len(joinedTrips) > 0 {
-		if j.msgCount%2000 == 0 {
-			fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(j.startTime).String(), j.msgCount, msg)
+		if j.msgCount%20000 == 0 {
+			fmt.Printf("Time: %s Received batch %v\n", time.Since(j.startTime).String(), id)
 		}
 
 		yearFilterTrips := j.dropDataForYearFilter(joinedTrips)
 		yearFilterBatch := utils.CreateBatch(id, "", yearFilterTrips)
 		j.yearFilterProducer.PublishMessage(yearFilterBatch, "")
 
-		if j.msgCount%2000 == 0 {
-			fmt.Printf("Time: %s Sent to year filter: %v\n", time.Since(j.startTime).String(), yearFilterBatch)
-		}
-
 		if city == "montreal" {
 			distanceCalculatorBatch := utils.CreateBatch(id, "", joinedTrips)
 			j.distanceCalculatorProducer.PublishMessage(distanceCalculatorBatch, "")
-			if j.msgCount%2000 == 0 {
-				fmt.Printf("Time: %s Sent to distance calculator: %v\n", time.Since(j.startTime).String(), distanceCalculatorBatch)
-			}
 		}
 	}
 	j.msgCount++
@@ -125,13 +118,11 @@ func (j *StationsJoiner) joinStations(city string, trips []string) []string {
 		startStationKey := getStationKey(startStationCode, year, city)
 		startStation, ok := j.stations[startStationKey]
 		if !ok {
-			fmt.Println(fmt.Errorf("station not found: %s %s", city, startStationKey))
 			continue
 		}
 		endStationKey := getStationKey(endStationCode, year, city)
 		endStation, ok := j.stations[endStationKey]
 		if !ok {
-			fmt.Println(fmt.Errorf("station not found: %s %s", city, startStationKey))
 			continue
 		}
 

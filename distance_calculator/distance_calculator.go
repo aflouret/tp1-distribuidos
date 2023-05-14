@@ -56,9 +56,8 @@ func (c *DistanceCalculator) processMessage(msg string) {
 		tripsWithDistanceBatch := utils.CreateBatch(id, "", tripsWithDistance)
 		c.producer.PublishMessage(tripsWithDistanceBatch, "")
 
-		if c.msgCount%2000 == 0 {
-			fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(c.startTime).String(), c.msgCount, msg)
-			fmt.Printf("Time: %s Sent to distance averager: %v\n", time.Since(c.startTime).String(), tripsWithDistanceBatch)
+		if c.msgCount%20000 == 0 {
+			fmt.Printf("Time: %s Received batch %v\n", time.Since(c.startTime).String(), id)
 		}
 	}
 

@@ -48,7 +48,6 @@ func (m *CountMerger) processMessage(msg string) {
 	if msg == "eof" {
 		return
 	}
-	fmt.Println("Received message " + msg)
 
 	m.mergeResults(msg)
 }

@@ -53,9 +53,8 @@ func (f *PrecipitationFilter) processMessage(msg string) {
 		filteredTripsBatch := utils.CreateBatch(id, "", filteredTrips)
 		f.producer.PublishMessage(filteredTripsBatch, "")
 
-		if f.msgCount%2000 == 0 {
-			fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(f.startTime).String(), f.msgCount, msg)
-			fmt.Printf("Time: %s Sent to duration averager: %v\n", time.Since(f.startTime).String(), filteredTripsBatch)
+		if f.msgCount%20000 == 0 {
+			fmt.Printf("Time: %s Received batch %v\n", time.Since(f.startTime).String(), id)
 		}
 	}
 

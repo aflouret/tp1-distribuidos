@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 	"tp1/client/internal/utils"
 	"tp1/common/protocol"
 )
@@ -23,8 +24,9 @@ type Config struct {
 }
 
 type Client struct {
-	config Config
-	conn   net.Conn
+	config    Config
+	conn      net.Conn
+	startTime time.Time
 }
 
 func NewClient(config Config) *Client {
@@ -47,6 +49,7 @@ func (c *Client) connectToServer() error {
 }
 
 func (c *Client) StartClient() {
+	c.startTime = time.Now()
 	err := c.sendStationsToServer()
 	if err != nil {
 		log.Errorf("action: send_stations | result: fail | error: %v", err)
@@ -67,6 +70,7 @@ func (c *Client) StartClient() {
 		log.Errorf("action: request_results | result: fail | error: %v", err)
 		return
 	}
+	log.Infof("action: exit_client | result: success | time: %s", time.Since(c.startTime).String())
 }
 
 func (c *Client) sendStationsToServer() error {

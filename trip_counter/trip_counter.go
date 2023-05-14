@@ -46,12 +46,12 @@ func (a *TripCounter) processMessage(msg string) {
 		return
 	}
 
-	_, _, trips := utils.ParseBatch(msg)
+	id, _, trips := utils.ParseBatch(msg)
 
 	a.updateCount(trips)
 
-	if a.msgCount%2000 == 0 {
-		fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(a.startTime).String(), a.msgCount, msg)
+	if a.msgCount%20000 == 0 {
+		fmt.Printf("Time: %s Received batch %v\n", time.Since(a.startTime).String(), id)
 	}
 	a.msgCount++
 }

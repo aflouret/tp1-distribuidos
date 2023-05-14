@@ -175,7 +175,7 @@ func (s *ClientHandler) handleTrips(conn net.Conn, city string) (shouldExit bool
 				fmt.Printf("Received invalid message: %v, \n", msg.Type)
 				return
 			}
-			fmt.Println("Finished receiving trips from " + city)
+			fmt.Printf("Time: %s Finished receiving trips from %s", time.Since(startTime).String(), city)
 			protocol.Send(conn, protocol.Message{Type: protocol.Ack, Payload: ""})
 			return
 		}
@@ -183,7 +183,7 @@ func (s *ClientHandler) handleTrips(conn net.Conn, city string) (shouldExit bool
 		id := strconv.Itoa(batchCounter)
 		batch := id + "," + city + "\n" + msg.Payload
 		s.tripsProducer.PublishMessage(batch, "")
-		if batchCounter%200 == 0 {
+		if batchCounter%10000 == 0 {
 			fmt.Printf("Time: %s Received batch %s\n", time.Since(startTime).String(), id)
 		}
 		batchCounter++

@@ -42,13 +42,18 @@ func NewConsumer(exchangeName string, routingKey string, producerCount int, cons
 	)
 	failOnError(err, "Failed to declare an exchange")
 
+	queueName := ""
+	if exchangeName != "stations" && exchangeName != "weather" {
+		queueName = exchangeName + routingKey + consumerID
+	}
+	fmt.Println("queue name : " + queueName)
 	q, err := ch.QueueDeclare(
-		"",    // name
-		false, // durable
-		false, // delete when unused
-		true,  // exclusive
-		false, // no-wait
-		nil,   // arguments
+		queueName, // name
+		false,     // durable
+		false,     // delete when unused
+		true,      // exclusive
+		false,     // no-wait
+		nil,       // arguments
 	)
 	failOnError(err, "Failed to declare a queue")
 
@@ -71,7 +76,7 @@ func NewConsumer(exchangeName string, routingKey string, producerCount int, cons
 	msgs, err := ch.Consume(
 		q.Name,
 		"",
-		true,
+		false,
 		false,
 		false,
 		false,
@@ -109,6 +114,7 @@ func (c *Consumer) Consume(processMessage func(string)) {
 				continue
 			}
 			processMessage(msgBody)
+			msg.Ack(false)
 		}
 
 	}

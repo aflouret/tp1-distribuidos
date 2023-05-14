@@ -48,8 +48,6 @@ func (m *DurationMerger) processMessage(msg string) {
 		return
 	}
 
-	//fmt.Println("Received message " + msg)
-
 	m.mergeResults(msg)
 }
 
@@ -92,5 +90,4 @@ func (m *DurationMerger) sendResults() {
 	}
 
 	m.producer.PublishMessage(result, "")
-	fmt.Println(result)
 }

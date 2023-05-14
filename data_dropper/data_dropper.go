@@ -63,10 +63,8 @@ func (d *DataDropper) processMessage(msg string) {
 	stationsJoinerBatch := utils.CreateBatch(id, city, stationsJoinerTrips)
 	d.stationsJoinerProducer.PublishMessage(stationsJoinerBatch, "")
 
-	if d.msgCount%2000 == 0 {
-		fmt.Printf("Time: %s Received batch %v: %s\n", time.Since(d.startTime).String(), d.msgCount, msg)
-		fmt.Printf("Time: %s Sent to weather joiner: %v\n", time.Since(d.startTime).String(), weatherJoinerBatch)
-		fmt.Printf("Time: %s Sent to stations joiner: %v\n", time.Since(d.startTime).String(), stationsJoinerBatch)
+	if d.msgCount%20000 == 0 {
+		fmt.Printf("Time: %s Received batch %v\n", time.Since(d.startTime).String(), id)
 	}
 	d.msgCount++
 }
