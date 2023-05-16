@@ -1,33 +1,30 @@
 package main
 
 import (
-	"os"
-	"strconv"
+	log "github.com/sirupsen/logrus"
 	"tp1/common/middleware"
 )
 
 func main() {
-	instanceID := os.Getenv("ID")
-	if instanceID == "" {
-		instanceID = "0"
-	}
-	previousStageInstances, err := strconv.Atoi(os.Getenv("PREV_STAGE_INSTANCES"))
+	stationsConsumer, err := middleware.NewConsumer("stations_consumer")
 	if err != nil {
-		previousStageInstances = 1
-	}
-	yearFilterInstances, err := strconv.Atoi(os.Getenv("YEAR_FILTER_INSTANCES"))
-	if err != nil {
-		yearFilterInstances = 1
-	}
-	distanceCalculatorInstances, err := strconv.Atoi(os.Getenv("DISTANCE_CALCULATOR_INSTANCES"))
-	if err != nil {
-		distanceCalculatorInstances = 1
+		log.Fatal(err)
 	}
 
-	stationsConsumer := middleware.NewConsumer("stations", "", 1, "0")
-	tripsConsumer := middleware.NewConsumer("stations_joiner_trips", "", previousStageInstances, instanceID)
-	yearFilterProducer := middleware.NewProducer("year_filter", yearFilterInstances, true)
-	distanceCalculatorProducer := middleware.NewProducer("distance_calculator", distanceCalculatorInstances, true)
+	tripsConsumer, err := middleware.NewConsumer("trips_consumer")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	yearFilterProducer, err := middleware.NewProducer("year_filter_producer")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	distanceCalculatorProducer, err := middleware.NewProducer("distance_calculator_producer")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	stationsJoiner := NewStationsJoiner(tripsConsumer, stationsConsumer, yearFilterProducer, distanceCalculatorProducer)
 	stationsJoiner.Run()

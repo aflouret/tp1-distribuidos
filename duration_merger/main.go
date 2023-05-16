@@ -1,23 +1,19 @@
 package main
 
 import (
-	"os"
-	"strconv"
+	"log"
 	"tp1/common/middleware"
 )
 
 func main() {
-	instanceID := os.Getenv("ID")
-	if instanceID == "" {
-		instanceID = "0"
-	}
-
-	previousStageInstances, err := strconv.Atoi(os.Getenv("PREV_STAGE_INSTANCES"))
+	consumer, err := middleware.NewConsumer("consumer")
 	if err != nil {
-		previousStageInstances = 1
+		log.Fatal(err)
 	}
-	consumer := middleware.NewConsumer("duration_merger", "", previousStageInstances, instanceID)
-	producer := middleware.NewProducer("results", 1, false)
+	producer, err := middleware.NewProducer("producer")
+	if err != nil {
+		log.Fatal(err)
+	}
 	durationMerger := NewDurationMerger(consumer, producer)
 	durationMerger.Run()
 }

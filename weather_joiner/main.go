@@ -1,28 +1,23 @@
 package main
 
 import (
-	"os"
-	"strconv"
+	"log"
 	"tp1/common/middleware"
 )
 
 func main() {
-	instanceID := os.Getenv("ID")
-	if instanceID == "" {
-		instanceID = "0"
-	}
-
-	previousStageInstances, err := strconv.Atoi(os.Getenv("PREV_STAGE_INSTANCES"))
+	producer, err := middleware.NewProducer("producer")
 	if err != nil {
-		previousStageInstances = 1
+		log.Fatal(err)
 	}
-	nextStageInstances, err := strconv.Atoi(os.Getenv("NEXT_STAGE_INSTANCES"))
+	weatherConsumer, err := middleware.NewConsumer("weather_consumer")
 	if err != nil {
-		nextStageInstances = 1
+		log.Fatal(err)
 	}
-	producer := middleware.NewProducer("precipitation_filter", nextStageInstances, true)
-	weatherConsumer := middleware.NewConsumer("weather", "", 1, "0")
-	tripsConsumer := middleware.NewConsumer("weather_joiner_trips", "", previousStageInstances, instanceID)
+	tripsConsumer, err := middleware.NewConsumer("trips_consumer")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	weatherJoiner := NewWeatherJoiner(producer, weatherConsumer, tripsConsumer)
 	weatherJoiner.Run()

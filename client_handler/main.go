@@ -1,22 +1,27 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"strconv"
+	"log"
 	"tp1/common/middleware"
 )
 
 func main() {
-	nextStageInstances, err := strconv.Atoi(os.Getenv("NEXT_STAGE_INSTANCES"))
+	resultsConsumer, err := middleware.NewConsumer("results_consumer")
 	if err != nil {
-		nextStageInstances = 1
+		log.Fatal(err)
 	}
-	fmt.Printf("NEXT_STAGE_INSTANCES %v\n", nextStageInstances)
-	tripsProducer := middleware.NewProducer("data_dropper", nextStageInstances, true)
-	stationsProducer := middleware.NewProducer("stations", 1, false)
-	weatherProducer := middleware.NewProducer("weather", 1, false)
-	resultsConsumer := middleware.NewConsumer("results", "", 1, "0")
+	tripsProducer, err := middleware.NewProducer("trips_producer")
+	if err != nil {
+		log.Fatal(err)
+	}
+	stationsProducer, err := middleware.NewProducer("stations_producer")
+	if err != nil {
+		log.Fatal(err)
+	}
+	weatherProducer, err := middleware.NewProducer("weather_producer")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	clientHandler := NewClientHandler(tripsProducer, stationsProducer, weatherProducer, resultsConsumer)
 	clientHandler.Run()

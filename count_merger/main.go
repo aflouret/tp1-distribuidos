@@ -1,17 +1,12 @@
 package main
 
 import (
+	"log"
 	"os"
-	"strconv"
 	"tp1/common/middleware"
 )
 
 func main() {
-	instanceID := os.Getenv("ID")
-	if instanceID == "" {
-		instanceID = "0"
-	}
-
 	year1 := os.Getenv("YEAR_1")
 	if year1 == "" {
 		year1 = "2016"
@@ -22,12 +17,14 @@ func main() {
 		year2 = "2017"
 	}
 
-	previousStageInstances, err := strconv.Atoi(os.Getenv("PREV_STAGE_INSTANCES"))
+	consumer, err := middleware.NewConsumer("consumer")
 	if err != nil {
-		previousStageInstances = 1
+		log.Fatal(err)
 	}
-	consumer := middleware.NewConsumer("count_merger", "", 2*previousStageInstances, instanceID)
-	producer := middleware.NewProducer("results", 1, false)
+	producer, err := middleware.NewProducer("producer")
+	if err != nil {
+		log.Fatal(err)
+	}
 	countMerger := NewCountMerger(consumer, producer, year1, year2)
 	countMerger.Run()
 }

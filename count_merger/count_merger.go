@@ -98,4 +98,5 @@ func (m *CountMerger) sendResults() {
 	}
 
 	m.producer.PublishMessage(result, "")
+	m.producer.PublishMessage("eof", "eof")
 }

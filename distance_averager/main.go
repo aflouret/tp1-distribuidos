@@ -1,28 +1,19 @@
 package main
 
 import (
-	"os"
-	"strconv"
+	"log"
 	"tp1/common/middleware"
 )
 
 func main() {
-	instanceID := os.Getenv("ID")
-	if instanceID == "" {
-		instanceID = "0"
-	}
-
-	previousStageInstances, err := strconv.Atoi(os.Getenv("PREV_STAGE_INSTANCES"))
+	consumer, err := middleware.NewConsumer("consumer")
 	if err != nil {
-		previousStageInstances = 1
+		log.Fatal(err)
 	}
-	nextStageInstances, err := strconv.Atoi(os.Getenv("NEXT_STAGE_INSTANCES"))
+	producer, err := middleware.NewProducer("producer")
 	if err != nil {
-		nextStageInstances = 1
+		log.Fatal(err)
 	}
-	consumer := middleware.NewConsumer("distance_averager", "", previousStageInstances, instanceID)
-	producer := middleware.NewProducer("distance_merger", nextStageInstances, false)
-
 	distanceAverager := NewDistanceAverager(consumer, producer)
 	distanceAverager.Run()
 }

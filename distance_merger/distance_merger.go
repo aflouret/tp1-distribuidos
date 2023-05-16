@@ -93,4 +93,5 @@ func (m *DistanceMerger) sendResults() {
 		}
 	}
 	m.producer.PublishMessage(result, "")
+	m.producer.PublishMessage("eof", "eof")
 }

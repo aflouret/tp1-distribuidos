@@ -1,33 +1,23 @@
 package main
 
 import (
-	"os"
-	"strconv"
+	"log"
 	"tp1/common/middleware"
 )
 
 func main() {
-	instanceID := os.Getenv("ID")
-	if instanceID == "" {
-		instanceID = "0"
-	}
-
-	previousStageInstances, err := strconv.Atoi(os.Getenv("PREV_STAGE_INSTANCES"))
+	consumer, err := middleware.NewConsumer("consumer")
 	if err != nil {
-		previousStageInstances = 1
+		log.Fatal(err)
 	}
-	stationsJoinerInstances, err := strconv.Atoi(os.Getenv("STATIONS_JOINER_INSTANCES"))
+	stationsJoinerProducer, err := middleware.NewProducer("stations_joiner_producer")
 	if err != nil {
-		stationsJoinerInstances = 1
+		log.Fatal(err)
 	}
-	weatherJoinerInstances, err := strconv.Atoi(os.Getenv("WEATHER_JOINER_INSTANCES"))
+	weatherJoinerProducer, err := middleware.NewProducer("weather_joiner_producer")
 	if err != nil {
-		weatherJoinerInstances = 1
+		log.Fatal(err)
 	}
-
-	consumer := middleware.NewConsumer("data_dropper", "", previousStageInstances, instanceID)
-	stationsJoinerProducer := middleware.NewProducer("stations_joiner_trips", stationsJoinerInstances, true)
-	weatherJoinerProducer := middleware.NewProducer("weather_joiner_trips", weatherJoinerInstances, true)
 
 	dataDropper := NewDataDropper(consumer, stationsJoinerProducer, weatherJoinerProducer)
 	dataDropper.Run()
