@@ -58,22 +58,22 @@ func (j *StationsJoiner) Run() {
 }
 
 func (j *StationsJoiner) processStationMessage(msg string) {
-	//fmt.Printf("Received station: %s\n", msg)
 	if msg == "eof" {
 		return
 	}
 
-	fields := strings.Split(msg, ",")
-	city := fields[0]
-	code := fields[1]
-	name := fields[2]
-	latitude := fields[3]
-	longitude := fields[4]
-	year := fields[5]
+	_, city, stations := utils.ParseBatch(msg)
 
-	key := getStationKey(code, year, city)
-	j.stations[key] = station{name, latitude, longitude}
-
+	for _, s := range stations {
+		fields := strings.Split(s, ",")
+		code := fields[0]
+		name := fields[1]
+		latitude := fields[2]
+		longitude := fields[3]
+		year := fields[4]
+		key := getStationKey(code, year, city)
+		j.stations[key] = station{name, latitude, longitude}
+	}
 }
 
 func (j *StationsJoiner) processTripMessage(msg string) {

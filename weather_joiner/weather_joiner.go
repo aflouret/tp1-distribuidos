@@ -51,23 +51,24 @@ func (j *WeatherJoiner) processWeatherMessage(msg string) {
 		return
 	}
 
-	fields := strings.Split(msg, ",")
-	city := fields[0]
-	date := fields[1]
-	precipitations := fields[2]
+	_, city, weather := utils.ParseBatch(msg)
 
-	previousDate, err := getPreviousDate(date)
-	if err != nil {
-		fmt.Printf("error parsing date: %s", err)
-		return
+	for _, w := range weather {
+		fields := strings.Split(w, ",")
+		date := fields[0]
+		precipitations := fields[1]
+
+		previousDate, err := getPreviousDate(date)
+		if err != nil {
+			fmt.Printf("error parsing date: %s", err)
+			return
+		}
+
+		if _, ok := j.precipitationsByDateByCity[city]; !ok {
+			j.precipitationsByDateByCity[city] = make(map[string]string)
+		}
+		j.precipitationsByDateByCity[city][previousDate] = precipitations
 	}
-
-	if _, ok := j.precipitationsByDateByCity[city]; !ok {
-		j.precipitationsByDateByCity[city] = make(map[string]string)
-	}
-	j.precipitationsByDateByCity[city][previousDate] = precipitations
-
-	//log.Printf("Received weather: %s\n", msg)
 }
 
 func (j *WeatherJoiner) processTripMessage(msg string) {

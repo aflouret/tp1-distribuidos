@@ -5,7 +5,6 @@ trips_consumer:
 stations_consumer:
   exchange_name: stations
   prev_stage_instances_env: CLIENT_HANDLER_INSTANCES
-  routing_key: ""
   route_by_id: false
 year_filter_producer:
   exchange_name: year_filter
